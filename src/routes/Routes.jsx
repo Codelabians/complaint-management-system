@@ -90,18 +90,7 @@ const AppRouter = () => {
         <Route path="tickets" element={<Tickets />} />
         <Route path="assign-support" element={<AssignTickets />} />
         <Route path="demo-request" element={<RequestDemo/>} />
-        {/* <Route
-          path="calenders-reservation"
-          element={<CalendersReservation />}
-        /> */}
-        {/* <Route path="pools" element={<Pools />} />
-        <Route path="stingrays-swim-team" element={<StingraysSwimTeam />} />
-        <Route path="tennis" element={<Tennis />} />
-        <Route path="help" element={<Help />} />
-        <Route path="faqs" element={<FAQs />} />
-        <Route path="pages" element={<Pages />} />
-        <Route path="mass-email" element={<MassEmail />} />
-        <Route path="settings" element={<Settings />} /> */}
+      
       </Route>
       <Route path="/login" element={<Login />} />
       <Route path="/forget-password" element={<ForgetPassword />} />
