@@ -1,20 +1,10 @@
-import { Toaster } from 'react-hot-toast';
-import './index.css'
-import AppRouter from './routes/Routes';
-
-
+import React from 'react';
+import { RouterProvider } from 'react-router-dom';
+import './index.css';
+import router from './routes/Router';
 
 function App() {
-  return (
-    <>
-       <Toaster position='top-center'/>
-       <AppRouter/>
-    </>
-  );
+  return <RouterProvider router={router} />;
 }
 
 export default App;
-
-
-
-
