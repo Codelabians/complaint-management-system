@@ -1,4 +1,6 @@
+import Login from '@/pages/auth/Login';
 import Dashboard from '@/pages/Dashboard';
+import TehsilCreate from '@/pages/tehsil/TehsilCreate';
 import TehsilList from '@/pages/tehsil/TehsilList';
 import MainLayout from '@/ui/layout/MainLayout';
 import { createBrowserRouter } from 'react-router-dom';
@@ -33,6 +35,15 @@ const router = createBrowserRouter([
         path: 'tehsils',
         element: <TehsilList />
       },
+       {
+        path: 'tehsil-create',
+        element: <TehsilCreate />
+      },
+      //   {
+      //   path: 'login',
+      //   element: <Login />
+      // },
+     
       // {
       //   path: 'tehsils/create',
       //   element: <TehsilCreate />

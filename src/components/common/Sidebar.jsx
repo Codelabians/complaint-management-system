@@ -21,7 +21,7 @@ const menuItems = [
     icon: MapPin,
     submenu: [
       { id: 'tehsil-list', label: 'All Tehsils', route: '/tehsils' },
-      { id: 'tehsil-create', label: 'Create Tehsil', route: '/tehsils/create' }
+      { id: 'tehsil-create', label: 'Create Tehsil', route: '/tehsil-create' }
     ]
   },
   {
@@ -88,7 +88,7 @@ const Sidebar = () => {
   return (
     <aside 
       className={`
-        ${isSidebarOpen ? 'w-96' : 'w-20'} 
+        ${isSidebarOpen ? 'w-80' : 'w-20'} 
         bg-greenDarkest text-greenLight
         border-r border-greenDark
         transition-all duration-300 ease-in-out
