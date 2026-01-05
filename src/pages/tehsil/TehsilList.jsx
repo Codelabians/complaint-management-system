@@ -1,109 +1,260 @@
 import AddButton from "@/components/common/AddButton";
+import ConfirmDialog from "@/components/common/ConfirmDialog";
 import Header from "@/components/common/Header";
+import Loader from "@/components/common/Loader";
 import Modal from "@/components/common/Modal";
 import Table from "@/components/common/Table";
 import FormInput from "@/components/forms/Formnput";
-import Button from "@/ui/Button";
-import { Building2 } from "lucide-react";
-import { useState } from "react";
+import { useGetQuery, usePostMutation, usePatchMutation, useDeleteMutation } from "@/services/apiService";
+import { Building2, Trash2 } from "lucide-react";
+import { useMemo, useState } from "react";
+import { toast } from "react-toastify";
 
-const columns = ["Tehsil",  ];
-
-const sampleData = [
-  {
-    id: 1,
-    Tehsil: "John Doe",
-    email: "john@example.com",
-    role: "Developer",
-    img: "https://api.dicebear.com/7.x/avataaars/svg?seed=John",
-  },
-  {
-    id: 2,
-    Tehsil: "Jane Smith",
-    email: "jane@example.com",
-    role: "Designer",
-    img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Jane",
-  },
-  {
-    id: 3,
-    Tehsil: "Bob Johnson",
-    email: "bob@example.com",
-    role: "Manager",
-    img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Bob",
-  },
-  {
-    id: 4,
-    Tehsil: "Alice Williams",
-    email: "alice@example.com",
-    role: "Developer",
-    img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Alice",
-  },
-  {
-    id: 5,
-    Tehsil: "Charlie Brown",
-    email: "charlie@example.com",
-    role: "Tester",
-    img: "https://api.dicebear.com/7.x/avataaars/svg?seed=Charlie",
-  },
-];
+const columns = ["Tehsil", "District"];
 
 const TehsilList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [selectedTehsil, setSelectedTehsil] = useState(null);
+  const [formData, setFormData] = useState({
+    district: "",
+    name: "",
+  });
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+const [tehsilToDelete, setTehsilToDelete] = useState(null);
+
+  const { data, isLoading: districtsLoading } = useGetQuery({ path: "zila/all" });
+  const { data: tehsilsData, isLoading: tehsilLoading, refetch } = useGetQuery({ path: "tehsil/all" });
+
+  const [createTehsil, { isLoading: isCreating }] = usePostMutation();
+  const [updateTehsil, { isLoading: isUpdating }] = usePatchMutation();
+  const [deleteTehsil, { isLoading: isDeleting }] = useDeleteMutation();
+
+  const districts = data?.data || [];
+  const tehsils = tehsilsData?.tehsils || [];
+
+  const districtOptions = useMemo(() => {
+    return districts.map((item) => ({
+      value: item._id,
+      label: item.name,
+    }));
+  }, [districts]);
+
+  const autoSelectedDistrict = districts.length === 1 ? districts[0]._id : "";
+
+  useMemo(() => {
+    if (!isEditMode && autoSelectedDistrict && !formData.district) {
+      setFormData((prev) => ({ ...prev, district: autoSelectedDistrict }));
+    }
+  }, [autoSelectedDistrict, isEditMode]);
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleCreate = () => {
+    setIsEditMode(false);
+    setSelectedTehsil(null);
+    setFormData({ district: autoSelectedDistrict, name: "" });
+    setIsModalOpen(true);
+  };
+
+  const handleEdit = (row) => {
+    setIsEditMode(true);
+    setSelectedTehsil(row);
+    setFormData({
+      district: row.zilaId || "", 
+      name: row.Tehsil || "",
+    });
+    setIsModalOpen(true);
+  };
+
+const handleDelete = (row) => {
+  setTehsilToDelete(row);
+  setShowDeleteConfirm(true);
+};
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!formData.district) {
+      toast.error("Please select a district");
+      return;
+    }
+    if (!formData.name.trim()) {
+      toast.error("Tehsil name is required");
+      return;
+    }
+
+    const payload = {
+      zilaId: formData.district,
+      name: formData.name.trim(),
+    };
+
+    try {
+      if (isEditMode) {
+        // UPDATE
+        await updateTehsil({
+          path: `tehsil/${selectedTehsil.id}`,
+          body: payload,
+        }).unwrap();
+
+        toast.success("Tehsil updated successfully!");
+      } else {
+        await createTehsil({
+          path: "tehsil/create",
+          body: payload,
+        }).unwrap();
+
+        toast.success("Tehsil created successfully!");
+      }
+
+      setIsModalOpen(false);
+      setIsEditMode(false);
+      setSelectedTehsil(null);
+      setFormData({ district: autoSelectedDistrict, name: "" });
+
+      refetch(); 
+    } catch (error) {
+      toast.error(error?.data?.message || "Operation failed");
+    }
+  };
+
+  const confirmDelete = async () => {
+  if (!tehsilToDelete) return;
+
+  try {
+    await deleteTehsil({
+      path: `tehsil/${tehsilToDelete.id}`,
+    }).unwrap();
+
+    toast.success("Tehsil deleted successfully!");
+    refetch();
+  } catch (error) {
+    toast.error(error?.data?.message || "Failed to delete tehsil");
+  } finally {
+    setShowDeleteConfirm(false);
+    setTehsilToDelete(null);
+  }
+};
+
+  const mappedTehsils = useMemo(() => {
+    return tehsils.map((tehsil) => ({
+      id: tehsil._id,
+      Tehsil: tehsil.name || "—",
+      District: tehsil.zilaId?.name || "Not Assigned",
+      zilaId: tehsil.zilaId?._id || null, 
+    }));
+  }, [tehsils]);
 
   return (
     <>
       <Header
         title="Tehsils"
         icon={Building2}
-        count={12}
-        actionButton={
-          <AddButton text="Create" onClick={() => setIsModalOpen(true)} />
-        }
+        count={tehsils.length}
+        actionButton={<AddButton text="Create" onClick={handleCreate} />}
       />
-      <Table
-        columns={columns}
-        data={sampleData}
-        actions={{
-          view: true,
-          edit: true,
-          delete: true,
-        }}
-      />
+
+      {tehsilLoading ? (
+        <div className="flex justify-center items-center min-h-[400px]">
+          <Loader />
+        </div>
+      ) : (
+        <Table
+          columns={columns}
+          data={mappedTehsils}
+          actions={{
+            edit: true,
+            delete: true,
+          }}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+        />
+      )}
 
       <Modal
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
-        title="Create tehsil"
+        onClose={() => {
+          setIsModalOpen(false);
+          setIsEditMode(false);
+          setSelectedTehsil(null);
+        }}
+        title={isEditMode ? "Edit Tehsil" : "Create Tehsil"}
       >
-        <div>
-          <FormInput
-            label="Name"
-            name="name"
-            placeholder="Enter Name"
-            required
-          />
-          {/* <FormInput label="Email Address" type="email" name="email"  placeholder="Enter email address" required /> */}
-          {/* <FormInput label="Role" type="select" name="role"   options={[
-            { value: 'Developer', label: 'Developer' },
-            { value: 'Designer', label: 'Designer' },
-            { value: 'Manager', label: 'Manager' },
-            { value: 'Tester', label: 'Tester' }
-          ]} placeholder="Select role" required /> */}
-          {/* <FormInput label="Description" type="textarea" name="description"  placeholder="Enter description" rows={3} /> */}
+        <form onSubmit={handleSubmit}>
+          <div className="space-y-5">
+            <FormInput
+              label="District"
+              type="select"
+              name="district"
+              value={formData.district}
+              onChange={handleInputChange}
+              options={districtOptions}
+              placeholder={districtsLoading ? "Loading..." : "Select district"}
+              disabled={districtsLoading || districts.length === 0}
+              required
+            />
 
-          <div className="flex justify-end gap-3 mt-6">
-            <button
-              onClick={() => setIsModalOpen(false)}
-              className="px-6 py-2 rounded-lg font-semibold transition-all bg-grey text-white"
-            >
-              Cancel
-            </button>
-            <button className="px-6 py-2 rounded-lg font-semibold transition-all bg-greenPrimary text-white">
-              Create Employee
-            </button>
+            <FormInput
+              label="Name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              placeholder="Enter Tehsil Name"
+              required
+            />
+
+            <div className="flex justify-end gap-3 mt-6">
+              <button
+                type="button"
+                onClick={() => {
+                  setIsModalOpen(false);
+                  setIsEditMode(false);
+                  setSelectedTehsil(null);
+                }}
+                className="px-6 py-2 rounded-lg font-semibold bg-gray-500 hover:bg-gray-600 text-white transition-all"
+                disabled={isCreating || isUpdating}
+              >
+                Cancel
+              </button>
+
+              <button
+                type="submit"
+                disabled={isCreating || isUpdating || districtsLoading}
+                className="px-6 py-2 rounded-lg font-semibold bg-greenDarkest hover:bg-green-700 text-white transition-all disabled:opacity-50"
+              >
+                {isCreating || isUpdating
+                  ? isEditMode
+                    ? "Updating..."
+                    : "Creating..."
+                  : isEditMode
+                  ? "Update Tehsil"
+                  : "Add Tehsil"}
+              </button>
+            </div>
           </div>
-        </div>
+        </form>
       </Modal>
+      <ConfirmDialog
+      isOpen={showDeleteConfirm}
+      onClose={() => {
+        setShowDeleteConfirm(false);
+        setTehsilToDelete(null);
+      }}
+      onConfirm={confirmDelete}
+      title="Delete Tehsil"
+      message={
+        tehsilToDelete
+          ? `Are you sure you want to delete "${tehsilToDelete.Tehsil}"? This action cannot be undone.`
+          : "Are you sure you want to delete this tehsil?"
+      }
+      confirmText="Delete"
+      cancelText="Cancel"
+      isLoading={isDeleting}
+      variant="danger"
+    />
     </>
   );
 };

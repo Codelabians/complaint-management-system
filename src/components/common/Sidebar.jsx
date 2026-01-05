@@ -20,7 +20,7 @@ const menuItems = [
     label: 'Tehsil Management',
     icon: MapPin,
     submenu: [
-      { id: 'tehsil-list', label: 'All Tehsils', route: '/tehsils' },
+      { id: 'tehsil-list', label: 'All Tehsils', route: '/portal/tehsils' },
       { id: 'tehsil-create', label: 'Create Tehsil', route: '/tehsil-create' }
     ]
   },
@@ -32,7 +32,7 @@ const menuItems = [
       { id: 'ac-list', label: 'Assistant Commissioners', route: '/users/ac' },
       { id: 'mc-list', label: 'Magistrates', route: '/users/mc' },
       { id: 'co-list', label: 'Complaint Officers', route: '/users/co' },
-      { id: 'user-create', label: 'Create User', route: '/users/create' }
+      { id: 'user-create', label: 'Create User', route: '/portal/users/create' }
     ]
   },
   {
