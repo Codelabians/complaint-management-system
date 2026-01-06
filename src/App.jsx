@@ -1,10 +1,24 @@
-import React from 'react';
-import { RouterProvider } from 'react-router-dom';
-import './index.css';
-import router from './routes/Router';
+// // src/App.jsx
+// import React from 'react';
+// import { RouterProvider } from 'react-router-dom';
+// import { Provider } from 'react-redux';
+// import { Toaster } from 'react-hot-toast';
+// import router from './routes/Router';
+// import './index.css';
+// import { store } from './store/store';
+
+// function App() {
+//   return (
+//     <Provider store={store}>
+//       <RouterProvider router={router} />
+//       <Toaster position="top-right" />
+//     </Provider>
+//   );
+// }
+
+// export default App;
 
 function App() {
-  return <RouterProvider router={router} />;
+  return null;
 }
-
 export default App;

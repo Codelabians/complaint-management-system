@@ -20,8 +20,8 @@ const menuItems = [
     label: 'Tehsil Management',
     icon: MapPin,
     submenu: [
-      { id: 'tehsil-list', label: 'All Tehsils', route: '/tehsils' },
-      { id: 'tehsil-create', label: 'Create Tehsil', route: '/tehsils/create' }
+      { id: 'tehsil-list', label: 'All Tehsils', route: '/portal/tehsils' },
+      { id: 'DC-list', label: 'All DCs', route: '/portal/dcs' }
     ]
   },
   {
@@ -32,7 +32,7 @@ const menuItems = [
       { id: 'ac-list', label: 'Assistant Commissioners', route: '/users/ac' },
       { id: 'mc-list', label: 'Magistrates', route: '/users/mc' },
       { id: 'co-list', label: 'Complaint Officers', route: '/users/co' },
-      { id: 'user-create', label: 'Create User', route: '/users/create' }
+      { id: 'user-create', label: 'Create User', route: '/portal/users/create' }
     ]
   },
   {
@@ -88,7 +88,7 @@ const Sidebar = () => {
   return (
     <aside 
       className={`
-        ${isSidebarOpen ? 'w-96' : 'w-20'} 
+        ${isSidebarOpen ? 'w-80' : 'w-20'} 
         bg-greenDarkest text-greenLight
         border-r border-greenDark
         transition-all duration-300 ease-in-out
