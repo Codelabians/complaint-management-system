@@ -13,10 +13,11 @@ import Login from '@/pages/auth/Login';
 // Protected Pages
 import Dashboard from '@/pages/Dashboard';
 import TehsilList from '@/pages/tehsil/TehsilList';
-import TehsilCreate from '@/pages/tehsil/TehsilCreate';
+import TehsilCreate from '@/pages/tehsil/DCList';
 import PublicRoute from './PublicRoutes';
 import ProtectedRoutes from './ProtectedRoutes';
 import UserCreate from '@/pages/users/UserCreate';
+import DCList from '@/pages/tehsil/DCList';
 
 // Route Protection Components
 
@@ -80,8 +81,8 @@ const router = createBrowserRouter([
             element: <TehsilList />,
           },
           {
-            path: 'tehsil-create',
-            element: <TehsilCreate />,
+            path: '/portal/dcs',
+            element: <DCList />,
           },
 
            {path : 'users/create',

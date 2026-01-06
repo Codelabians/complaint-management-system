@@ -156,12 +156,12 @@ const handleDelete = (row) => {
         count={tehsils.length}
         actionButton={<AddButton text="Create" onClick={handleCreate} />}
       />
-
+{/* 
       {tehsilLoading ? (
         <div className="flex justify-center items-center min-h-[400px]">
           <Loader />
-        </div>
-      ) : (
+        </div> */}
+      {/* ) : ( */}
         <Table
           columns={columns}
           data={mappedTehsils}
@@ -172,7 +172,7 @@ const handleDelete = (row) => {
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
-      )}
+      {/* )} */}
 
       <Modal
         isOpen={isModalOpen}

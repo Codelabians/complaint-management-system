@@ -21,7 +21,7 @@ const menuItems = [
     icon: MapPin,
     submenu: [
       { id: 'tehsil-list', label: 'All Tehsils', route: '/portal/tehsils' },
-      { id: 'tehsil-create', label: 'Create Tehsil', route: '/tehsil-create' }
+      { id: 'DC-list', label: 'All DCs', route: '/portal/dcs' }
     ]
   },
   {
