@@ -11,11 +11,11 @@ import {
   usePatchMutation,
   useDeleteMutation,
 } from "@/services/apiService";
-import { Users, Trash2 } from "lucide-react";
+import { Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
-const columns = ["Name", "Officer", "Employees"];
+const columns = ["Name", "District",  "Employees"]; 
 
 const DCList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -23,11 +23,16 @@ const DCList = () => {
   const [selectedDC, setSelectedDC] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
+    zilaId: "",
   });
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [dcToDelete, setDcToDelete] = useState(null);
 
+  // Fetch all zila (districts)
+  const { data: zilaData, isLoading: zilaLoading } = useGetQuery({ path: "zila/all" });
+
+  // Fetch all district councils
   const {
     data: dcsData,
     isLoading: dcLoading,
@@ -38,7 +43,14 @@ const DCList = () => {
   const [updateDC, { isLoading: isUpdating }] = usePatchMutation();
   const [deleteDC, { isLoading: isDeleting }] = useDeleteMutation();
 
-  const dcs = dcsData?.data || []; 
+  const dcs = dcsData?.districtCouncils || []; // ← Correct key from your response
+
+  const zilaOptions = useMemo(() => {
+    return (zilaData?.data || []).map((zila) => ({
+      value: zila._id,
+      label: zila.name,
+    }));
+  }, [zilaData]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -48,7 +60,7 @@ const DCList = () => {
   const handleCreate = () => {
     setIsEditMode(false);
     setSelectedDC(null);
-    setFormData({ name: "" });
+    setFormData({ name: "", zilaId: "" });
     setIsModalOpen(true);
   };
 
@@ -57,6 +69,7 @@ const DCList = () => {
     setSelectedDC(row);
     setFormData({
       name: row.Name || "",
+      zilaId: row.zilaId || "",
     });
     setIsModalOpen(true);
   };
@@ -74,8 +87,14 @@ const DCList = () => {
       return;
     }
 
+    if (!formData.zilaId) {
+      toast.error("Please select a District (Zila)");
+      return;
+    }
+
     const payload = {
       name: formData.name.trim(),
+      zilaId: formData.zilaId,
     };
 
     try {
@@ -98,12 +117,16 @@ const DCList = () => {
       setIsModalOpen(false);
       setIsEditMode(false);
       setSelectedDC(null);
-      setFormData({ name: "" });
+      setFormData({ name: "", zilaId: "" });
 
       refetch();
     } catch (error) {
-      toast.error(error?.data?.message || "Operation failed");
-    }
+  toast.error(
+    error?.data?.error ||
+    error?.data?.message ||
+    "Failed to save. Please try again."
+  );
+}
   };
 
   const confirmDelete = async () => {
@@ -124,12 +147,15 @@ const DCList = () => {
     }
   };
 
+  // === Updated Mapping for the real API response ===
   const mappedDCs = useMemo(() => {
     return dcs.map((dc) => ({
       id: dc._id,
-      Name: dc.name || "—",
-      Officer: dc.officer ? dc.officer.name : "Not Assigned",
-      Employees: dc.employees?.length || 0,
+      Name: dc.name || "—", // Assuming DC has a "name" field (add if missing in response)
+      District: dc.zilaId?.name || "Not Assigned",
+      Officer: dc.officer ? dc.officer.name : "Not Assigned", // if officer exists
+      Employees: dc.employeeIds?.length || 0,
+      zilaId: dc.zilaId?._id || null, // for edit prefill
     }));
   }, [dcs]);
 
@@ -138,15 +164,15 @@ const DCList = () => {
       <Header
         title="District Councils"
         icon={Users}
-        count={dcs.length}
+        count={dcsData?.count || dcs.length}
         actionButton={<AddButton text="Create DC" onClick={handleCreate} />}
       />
 
-      {/* {dcLoading ? (
+      {dcLoading ? (
         <div className="flex justify-center items-center min-h-[400px]">
           <Loader />
         </div>
-      ) : ( */}
+      ) : (
         <Table
           columns={columns}
           data={mappedDCs}
@@ -157,7 +183,7 @@ const DCList = () => {
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
-      {/* )} */}
+      )}
 
       <Modal
         isOpen={isModalOpen}
@@ -170,6 +196,22 @@ const DCList = () => {
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-5">
+            {/* District (Zila) Select */}
+            <FormInput
+              label="District (Zila)"
+              type="select"
+              name="zilaId"
+              value={formData.zilaId}
+              onChange={handleInputChange}
+              options={zilaOptions}
+              placeholder={
+                zilaLoading ? "Loading districts..." : "Select District"
+              }
+              disabled={zilaLoading || zilaOptions.length === 0}
+              required
+            />
+
+            {/* Council Name */}
             <FormInput
               label="Name"
               name="name"
@@ -195,7 +237,7 @@ const DCList = () => {
 
               <button
                 type="submit"
-                disabled={isCreating || isUpdating}
+                disabled={isCreating || isUpdating || zilaLoading}
                 className="px-6 py-2 rounded-lg font-semibold bg-greenDarkest hover:bg-green-700 text-white transition-all disabled:opacity-50"
               >
                 {isCreating || isUpdating

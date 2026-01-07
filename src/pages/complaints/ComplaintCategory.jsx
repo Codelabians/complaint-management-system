@@ -11,120 +11,140 @@ import {
   usePatchMutation,
   useDeleteMutation,
 } from "@/services/apiService";
-import { Building2, Trash2 } from "lucide-react";
+import { ListTodo } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
-const columns = ["Tehsil", "District"];
+const sampleCategories = [
+  {
+    id: "1",
+    Name: "Water Supply",
+  },
+  {
+    id: "2",
+    Name: "Electricity",
+  },
+  {
+    id: "3",
+    Name: "Sanitation & Sewerage",
+  },
+  {
+    id: "4",
+    Name: "Road & Infrastructure",
+  },
+  {
+    id: "5",
+    Name: "Garbage Collection",
+  },
+  {
+    id: "6",
+    Name: "Street Lights",
+  },
+  {
+    id: "7",
+    Name: "Illegal Construction",
+  },
+  {
+    id: "8",
+    Name: "Noise Pollution",
+  },
+  {
+    id: "9",
+    Name: "Drainage Issue",
+  },
+  {
+    id: "10",
+    Name: "Other / Miscellaneous",
+  },
+];
 
-const TehsilList = () => {
+
+const ComplaintCategory = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedTehsil, setSelectedTehsil] = useState(null);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [formData, setFormData] = useState({
-    district: "",
     name: "",
   });
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [tehsilToDelete, setTehsilToDelete] = useState(null);
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
 
-  const { data, isLoading: districtsLoading } = useGetQuery({
-    path: "zila/all",
-  });
   const {
-    data: tehsilsData,
-    isLoading: tehsilLoading,
+    data: categoriesData,
+    isLoading: categoriesLoading,
     refetch,
-  } = useGetQuery({ path: "tehsil/all" });
+  } = useGetQuery({
+    path: "/dc/complaint-categories", // ← adjust path according to your API
+  });
 
-  const [createTehsil, { isLoading: isCreating }] = usePostMutation();
-  const [updateTehsil, { isLoading: isUpdating }] = usePatchMutation();
-  const [deleteTehsil, { isLoading: isDeleting }] = useDeleteMutation();
+  const [createCategory, { isLoading: isCreating }] = usePostMutation();
+  const [updateCategory, { isLoading: isUpdating }] = usePatchMutation();
+  const [deleteCategory, { isLoading: isDeleting }] = useDeleteMutation();
 
-  const districts = data?.data || [];
-  const tehsils = tehsilsData?.tehsils || [];
+  const categories = categoriesData?.data || []; // adjust based on your API response structure
 
-  const districtOptions = useMemo(() => {
-    return districts.map((item) => ({
-      value: item._id,
-      label: item.name,
-    }));
-  }, [districts]);
+  const handleCreate = () => {
+    setIsEditMode(false);
+    setSelectedCategory(null);
+    setFormData({ name: "" });
+    setIsModalOpen(true);
+  };
 
-  const autoSelectedDistrict = districts.length === 1 ? districts[0]._id : "";
+  const handleEdit = (row) => {
+    setIsEditMode(true);
+    setSelectedCategory(row);
+    setFormData({
+      name: row.name || "",
+    });
+    setIsModalOpen(true);
+  };
 
-  useMemo(() => {
-    if (!isEditMode && autoSelectedDistrict && !formData.district) {
-      setFormData((prev) => ({ ...prev, district: autoSelectedDistrict }));
-    }
-  }, [autoSelectedDistrict, isEditMode]);
+  const handleDelete = (row) => {
+    setCategoryToDelete(row);
+    setShowDeleteConfirm(true);
+  };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCreate = () => {
-    setIsEditMode(false);
-    setSelectedTehsil(null);
-    setFormData({ district: autoSelectedDistrict, name: "" });
-    setIsModalOpen(true);
-  };
-
-  const handleEdit = (row) => {
-    setIsEditMode(true);
-    setSelectedTehsil(row);
-    setFormData({
-      district: row.zilaId || "",
-      name: row.Tehsil || "",
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleDelete = (row) => {
-    setTehsilToDelete(row);
-    setShowDeleteConfirm(true);
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.district) {
-      toast.error("Please select a district");
-      return;
-    }
     if (!formData.name.trim()) {
-      toast.error("Tehsil name is required");
+      toast.error("Category name is required");
       return;
     }
 
     const payload = {
-      zilaId: formData.district,
       name: formData.name.trim(),
     };
 
     try {
       if (isEditMode) {
         // UPDATE
-        await updateTehsil({
-          path: `tehsil/${selectedTehsil.id}`,
+        await updateCategory({
+          path: `/dc/complaint-categories/${selectedCategory.id}`,
           body: payload,
         }).unwrap();
 
-        toast.success("Tehsil updated successfully!");
+        toast.success("Category updated successfully!");
       } else {
-        await createTehsil({
-          path: "tehsil/create",
+        // CREATE
+        await createCategory({
+          path: "/dc/complaint-categories",
           body: payload,
         }).unwrap();
 
-        toast.success("Tehsil created successfully!");
+        toast.success("Category created successfully!");
       }
 
       setIsModalOpen(false);
       setIsEditMode(false);
-      setSelectedTehsil(null);
-      setFormData({ district: autoSelectedDistrict, name: "" });
+      setSelectedCategory(null);
+      setFormData({ name: "" });
 
       refetch();
     } catch (error) {
@@ -133,49 +153,51 @@ const TehsilList = () => {
   };
 
   const confirmDelete = async () => {
-    if (!tehsilToDelete) return;
+    if (!categoryToDelete) return;
 
     try {
-      await deleteTehsil({
-        path: `tehsil/${tehsilToDelete.id}`,
+      await deleteCategory({
+        path: `/dc/complaint-categories/${categoryToDelete.id}`,
       }).unwrap();
 
-      toast.success("Tehsil deleted successfully!");
+      toast.success("Category deleted successfully!");
       refetch();
     } catch (error) {
-      toast.error(error?.data?.message || "Failed to delete tehsil");
+      toast.error(error?.data?.message || "Failed to delete category");
     } finally {
       setShowDeleteConfirm(false);
-      setTehsilToDelete(null);
+      setCategoryToDelete(null);
     }
   };
 
-  const mappedTehsils = useMemo(() => {
-    return tehsils.map((tehsil) => ({
-      id: tehsil._id,
-      Tehsil: tehsil.name || "—",
-      District: tehsil.zilaId?.name || "Not Assigned",
-      zilaId: tehsil.zilaId?._id || null,
+  // Map data for table display
+  const mappedCategories = useMemo(() => {
+    return categories.map((cat) => ({
+      id: cat._id,
+      Name: cat.name || "—",
+      // You can add more fields later (description, createdAt, etc.)
     }));
-  }, [tehsils]);
+  }, [categories]);
+
+  const columns = ["Name"];
 
   return (
     <>
       <Header
-        title="Tehsils"
-        icon={Building2}
-        count={tehsils.length}
-        actionButton={<AddButton text="Create" onClick={handleCreate} />}
+        title="Complaint Categories"
+        icon={ListTodo}
+        count={categories.length}
+        actionButton={<AddButton text="Add Category" onClick={handleCreate} />}
       />
 
-      {tehsilLoading ? (
+      {categoriesLoading ? (
         <div className="flex justify-center items-center min-h-[400px]">
           <Loader />
         </div>
       ) : (
         <Table
           columns={columns}
-          data={mappedTehsils}
+          data={mappedCategories}
           actions={{
             edit: true,
             delete: true,
@@ -185,35 +207,24 @@ const TehsilList = () => {
         />
       )}
 
+      {/* Create / Edit Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
           setIsEditMode(false);
-          setSelectedTehsil(null);
+          setSelectedCategory(null);
         }}
-        title={isEditMode ? "Edit Tehsil" : "Create Tehsil"}
+        title={isEditMode ? "Edit Category" : "Create New Category"}
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-5">
             <FormInput
-              label="District"
-              type="select"
-              name="district"
-              value={formData.district}
-              onChange={handleInputChange}
-              options={districtOptions}
-              placeholder={districtsLoading ? "Loading..." : "Select district"}
-              disabled={districtsLoading || districts.length === 0}
-              required
-            />
-
-            <FormInput
-              label="Name"
+              label="Category Name"
               name="name"
               value={formData.name}
               onChange={handleInputChange}
-              placeholder="Enter Tehsil Name"
+              placeholder="Enter category name"
               required
             />
 
@@ -223,7 +234,7 @@ const TehsilList = () => {
                 onClick={() => {
                   setIsModalOpen(false);
                   setIsEditMode(false);
-                  setSelectedTehsil(null);
+                  setSelectedCategory(null);
                 }}
                 className="px-6 py-2 rounded-lg font-semibold bg-gray-500 hover:bg-gray-600 text-white transition-all"
                 disabled={isCreating || isUpdating}
@@ -233,7 +244,7 @@ const TehsilList = () => {
 
               <button
                 type="submit"
-                disabled={isCreating || isUpdating || districtsLoading}
+                disabled={isCreating || isUpdating}
                 className="px-6 py-2 rounded-lg font-semibold bg-greenDarkest hover:bg-green-700 text-white transition-all disabled:opacity-50"
               >
                 {isCreating || isUpdating
@@ -241,25 +252,27 @@ const TehsilList = () => {
                     ? "Updating..."
                     : "Creating..."
                   : isEditMode
-                    ? "Update Tehsil"
-                    : "Add Tehsil"}
+                  ? "Update Category"
+                  : "Add Category"}
               </button>
             </div>
           </div>
         </form>
       </Modal>
+
+      {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         onClose={() => {
           setShowDeleteConfirm(false);
-          setTehsilToDelete(null);
+          setCategoryToDelete(null);
         }}
         onConfirm={confirmDelete}
-        title="Delete Tehsil"
+        title="Delete Category"
         message={
-          tehsilToDelete
-            ? `Are you sure you want to delete "${tehsilToDelete.Tehsil}"? This action cannot be undone.`
-            : "Are you sure you want to delete this tehsil?"
+          categoryToDelete
+            ? `Are you sure you want to delete category "${categoryToDelete.Name}"? This action cannot be undone.`
+            : "Are you sure you want to delete this category?"
         }
         confirmText="Delete"
         cancelText="Cancel"
@@ -270,4 +283,4 @@ const TehsilList = () => {
   );
 };
 
-export default TehsilList;
+export default ComplaintCategory;
