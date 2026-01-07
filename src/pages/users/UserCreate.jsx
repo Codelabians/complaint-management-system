@@ -3,11 +3,16 @@ import Header from "@/components/common/Header";
 import Modal from "@/components/common/Modal";
 import Table from "@/components/common/Table";
 import FormInput from "@/components/forms/Formnput";
+import { useGetQuery } from "@/services/apiService";
 import { User } from "lucide-react";
 import React, { useState } from "react";
 
 const UserCreate = () => {
      const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+
+     const {data : users} = useGetQuery({
+      path : "/dc/users"
+     })
   return (
     <>
       <Header

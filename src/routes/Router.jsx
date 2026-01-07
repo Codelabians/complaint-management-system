@@ -18,6 +18,11 @@ import PublicRoute from './PublicRoutes';
 import ProtectedRoutes from './ProtectedRoutes';
 import UserCreate from '@/pages/users/UserCreate';
 import DCList from '@/pages/tehsil/DCList';
+import McsList from '@/pages/mc/McsList';
+import AcsList from '@/pages/acs/AcsList';
+import Roles from '@/pages/roles/Roles';
+import ComplaintList from '@/pages/complaints/ComplaintList';
+import ComplaintCategory from '@/pages/complaints/ComplaintCategory';
 
 // Route Protection Components
 
@@ -80,13 +85,30 @@ const router = createBrowserRouter([
             path: '/portal/tehsils',
             element: <TehsilList />,
           },
+           {
+            path: '/portal/acs',
+            element: <AcsList />,
+          },
           {
             path: '/portal/dcs',
             element: <DCList />,
           },
+            {
+            path: '/portal/mcs',
+            element: <McsList />,
+          },
 
            {path : 'users/create',
             element : <UserCreate/>
+           },
+            {path : '/portal/roles',
+            element : <Roles/>
+           },
+            {path : '/portal/complaints',
+            element : <ComplaintList/>
+           },
+            {path : '/portal/complaint-category',
+            element : <ComplaintCategory/>
            }
         ],
       },

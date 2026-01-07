@@ -1,5 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
+// const REACT_APP_API_URL = "https://complaint-system-backend.vercel.app/api/"
 const REACT_APP_API_URL = "http://192.168.1.26:3000/api/"
 const API_URL = REACT_APP_API_URL;
 

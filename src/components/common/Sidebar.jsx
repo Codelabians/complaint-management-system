@@ -1,10 +1,13 @@
 import React, { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, MapPin, Users, FileText, 
   BarChart3, Settings, LogOut, ChevronDown, 
   Menu, X, User, ShieldCheck 
 } from 'lucide-react';
+import { clearCredentials } from '@/features/authSlice';
+import { toast } from 'react-toastify';
+import { useDispatch } from 'react-redux';
 
 
 
@@ -16,12 +19,28 @@ const menuItems = [
     route: '/dashboard'
   },
   {
+    id: 'dc',
+    label: 'DC Management',
+    icon: MapPin,
+    submenu: [
+      { id: 'dc-list', label: 'All District Councils', route: '/portal/dcs' },
+    ]
+  },
+    {
     id: 'tehsil',
     label: 'Tehsil Management',
     icon: MapPin,
     submenu: [
       { id: 'tehsil-list', label: 'All Tehsils', route: '/portal/tehsils' },
-      { id: 'DC-list', label: 'All DCs', route: '/portal/dcs' }
+      { id: 'ac-list', label: 'AC', route: '/portal/acs' },
+    ]
+  },
+    {
+    id: 'mc',
+    label: 'MC Management',
+    icon: MapPin,
+    submenu: [
+      { id: 'dc-list', label: 'All Municipal Committies', route: '/portal/mcs' },
     ]
   },
   {
@@ -32,7 +51,8 @@ const menuItems = [
       { id: 'ac-list', label: 'Assistant Commissioners', route: '/users/ac' },
       { id: 'mc-list', label: 'Magistrates', route: '/users/mc' },
       { id: 'co-list', label: 'Complaint Officers', route: '/users/co' },
-      { id: 'user-create', label: 'Create User', route: '/portal/users/create' }
+      { id: 'user-create', label: 'Create User', route: '/portal/users/create' },
+      { id: 'roles', label: 'Roles', route: '/portal/roles' }
     ]
   },
   {
@@ -40,8 +60,8 @@ const menuItems = [
     label: 'Complaints',
     icon: FileText,
     submenu: [
-      { id: 'complaint-list', label: 'All Complaints', route: '/complaints' },
-      { id: 'complaint-create', label: 'Register Complaint', route: '/complaints/create' },
+      { id: 'complaint-list', label: 'All Complaints', route: '/portal/complaints' },
+      { id: 'complaint-category', label: 'Complaint Category', route: '/portal/complaint-category' },
       { id: 'complaint-assigned', label: 'Assigned to Me', route: '/complaints/assigned' },
       { id: 'complaint-pending', label: 'Pending', route: '/complaints/pending' },
       { id: 'complaint-resolved', label: 'Resolved', route: '/complaints/resolved' }
@@ -72,7 +92,10 @@ const menuItems = [
 const Sidebar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [expandedMenus, setExpandedMenus] = useState({});
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const location = useLocation();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   
@@ -84,6 +107,31 @@ const Sidebar = () => {
   };
 
   const isActiveRoute = (route) => location.pathname === route;
+
+  const handleLogout = async () => {
+    if (isLoggingOut) return;
+
+    setIsLoggingOut(true);
+
+    try {
+      dispatch(clearCredentials());
+
+      localStorage.removeItem('persist:root'); 
+
+      toast.success('Logged out successfully', {
+        position: 'top-right',
+        autoClose: 3000,
+      });
+
+      navigate('/login', { replace: true });
+
+    } catch (error) {
+      console.error('Logout failed:', error);
+      toast.error('Logout failed. Please try again.');
+    } finally {
+      setIsLoggingOut(false);
+    }
+  };
 
   return (
     <aside 
@@ -249,36 +297,55 @@ const Sidebar = () => {
                 <p className="font-medium text-greenLight text-sm truncate">
                   Admin User
                 </p>
-                <p className="text-xs text-greenLight/65 truncate">
-                  admin@example.com
-                </p>
+            
               </div>
             </div>
 
-            <button className="
-              w-full flex items-center justify-center gap-2
-              py-2.5 px-4 rounded-xl
-              text-red-300 hover:text-red-200
-              bg-red-900/30 hover:bg-red-900/45
-              transition-all duration-200
-              font-medium
-              shadow-sm
-            ">
-              <LogOut size={18} />
-              <span>Logout</span>
+         <button
+              onClick={handleLogout}
+              disabled={isLoggingOut}
+              className="
+                w-full flex items-center justify-center gap-2
+                py-2.5 px-4 rounded-xl
+                text-red-300 hover:text-red-200
+                bg-red-900/30 hover:bg-red-900/45
+                transition-all duration-200
+                font-medium
+                shadow-sm
+                disabled:opacity-50 disabled:cursor-not-allowed
+              "
+            >
+              {isLoggingOut ? (
+                <span className="flex items-center gap-2">
+                  <span className="animate-spin h-4 w-4 border-2 border-red-300 border-t-transparent rounded-full"></span>
+                  Logging out...
+                </span>
+              ) : (
+                <>
+                  <LogOut size={18} />
+                  <span>Logout</span>
+                </>
+              )}
             </button>
           </div>
         ) : (
           <button 
+            onClick={handleLogout}
+            disabled={isLoggingOut}
             className="
               w-full py-3 flex justify-center
               text-red-300 hover:text-red-200
               hover:bg-red-900/35 rounded-xl
               transition-all duration-200
+              disabled:opacity-50
             "
             aria-label="Logout"
           >
-            <LogOut size={22} />
+            {isLoggingOut ? (
+              <span className="animate-spin h-5 w-5 border-2 border-red-300 border-t-transparent rounded-full"></span>
+            ) : (
+              <LogOut size={22} />
+            )}
           </button>
         )}
       </div>
