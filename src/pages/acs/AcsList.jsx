@@ -5,6 +5,7 @@ import {
   usePostMutation,
   usePatchMutation,
   useDeleteMutation,
+  usePutMutation,
 } from "@/services/apiService";
 import { UserCog, Trash2 } from "lucide-react";
 
@@ -16,7 +17,7 @@ import Modal from "@/components/common/Modal";
 import Table from "@/components/common/Table";
 import FormInput from "@/components/forms/Formnput";
 
-const columns = ["Name", "Username", "Role", "District", "Tehsil", "Phone", "Status"];
+const columns = ["Name", "Username", "District", "Tehsil", "Phone", "Status"];
 
 const AcsList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -45,14 +46,17 @@ const AcsList = () => {
   const { data: tehsilsData } = useGetQuery({ path: "tehsil/all" });
   const tehsils = tehsilsData?.tehsils || [];
 
-  const {
-    data: acsData,
-    isLoading: acsLoading,
-    refetch,
-  } = useGetQuery({ path: "acs/all" }); 
+const {
+  data: acsData,
+  isLoading: acsLoading,
+  refetch,
+} = useGetQuery({
+  path: "dc/users/by-role",
+  params: { roleName: "AC" },
+});
 
   const [createAc, { isLoading: isCreating }] = usePostMutation();
-  const [updateAc, { isLoading: isUpdating }] = usePatchMutation();
+  const [updateAc, { isLoading: isUpdating }] = usePutMutation();
   const [deleteAc, { isLoading: isDeleting }] = useDeleteMutation();
 
   const roleOptions = useMemo(() => 
@@ -107,20 +111,32 @@ const AcsList = () => {
     setIsModalOpen(true);
   };
 
-  const handleEdit = (row) => {
-    setIsEditMode(true);
-    setSelectedAc(row);
-    setFormData({
-      name: row.name || "",
-      username: row.username || "",
-      role: row.roleId || "",
-      zilaId: row.zilaId || "",
-      tehsilId: row.tehsilId || "",
-      password: "", 
-      phone: row.phone || "",
-    });
-    setIsModalOpen(true);
-  };
+const handleEdit = (row) => {
+  const original = row.original;  
+
+  if (!original) {
+    toast.error("Missing original user data");
+    return;
+  }
+
+  setIsEditMode(true);
+  setSelectedAc(original);
+  console.log(original);
+  
+
+  setFormData({
+    id : original.id,
+    name: original.name || "",
+    username: original.username || "",
+    role: original.roleId || original.role?.id || "",    
+    zilaId: original.zilaId?._id || original.zilaId || "", 
+    tehsilId: original.tehsilId?._id || "",              
+    password: "",                                        
+    phone: original.phone || "",
+  });
+
+  setIsModalOpen(true);
+};
 
   const handleDelete = (row) => {
     setAcToDelete(row);
@@ -135,7 +151,6 @@ const AcsList = () => {
     if (!formData.role) return toast.error("Please select a role");
     if (!formData.phone.trim()) return toast.error("Phone is required");
 
-    // Optional: require password only on create
     if (!isEditMode && !formData.password.trim()) {
       return toast.error("Password is required for new AC");
     }
@@ -153,13 +168,13 @@ const AcsList = () => {
     try {
       if (isEditMode) {
         await updateAc({
-          path: `acs/update/${selectedAc.id}`, // ← adjust endpoint
+          path: `dc/users/${selectedAc._id}/update`,
           body: payload,
         }).unwrap();
         toast.success("AC updated successfully!");
       } else {
         await createAc({
-          path: "dc/createUser", // ← adjust endpoint
+          path: "dc/createUser", 
           body: payload,
         }).unwrap();
         toast.success("AC created successfully!");
@@ -174,9 +189,11 @@ const AcsList = () => {
 
   const confirmDelete = async () => {
     if (!acToDelete) return;
+    console.log("delete id" , acToDelete);
+    
     try {
       await deleteAc({
-        path: `acs/delete/${acToDelete.id}`, // ← adjust endpoint
+        path: `dc/users/${acToDelete.original._id}/delete`, 
       }).unwrap();
       toast.success("AC deleted successfully!");
       refetch();
@@ -187,19 +204,19 @@ const AcsList = () => {
       setAcToDelete(null);
     }
   };
-
-  const mappedAcs = useMemo(() => {
-    return (acsData?.acs || acsData?.data || []).map(ac => ({
-      id: ac._id,
-      Name: ac.name || "—",
-      Username: ac.username || "—",
-      Role: ac.role?.name || ac.roleId?.name || "—",
-      District: ac.zilaId?.name || "—",
-      Tehsil: ac.tehsilId?.name || "—",
-      Phone: ac.phone || "—",
-      Status: ac.isActive !== false ? "Active" : "Inactive",
-    }));
-  }, [acsData]);
+const mappedAcs = useMemo(() => {
+  return (acsData?.data || []).map(ac => ({
+    id: ac.id,
+    original: ac,                     
+    Name: ac.name || "—",
+    Username: ac.username || "—",
+    Role: ac.role?.name || "—",
+    District: ac.zilaId?.name || "—",
+    Tehsil: ac.tehsilId?.name || "—",
+    Phone: ac.phone || "—",
+    Status: ac.isActive !== false ? "Active" : "Inactive",
+  }));
+}, [acsData]);
 
   return (
     <>
@@ -253,7 +270,7 @@ const AcsList = () => {
               value={formData.zilaId}
               onChange={handleInputChange}
               options={districtOptions}
-              placeholder="Select District (optional)"
+              placeholder="Select District "
             />
 
             <FormInput
@@ -268,7 +285,7 @@ const AcsList = () => {
             />
 
             <FormInput
-              label={isEditMode ? "New Password (leave empty to keep current)" : "Password"}
+              label={isEditMode ? "New Password " : "Password"}
               name="password"
               type="password"
               value={formData.password}
@@ -302,7 +319,6 @@ const AcsList = () => {
         </form>
       </Modal>
 
-      {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}

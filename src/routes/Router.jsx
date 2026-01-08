@@ -23,6 +23,7 @@ import AcsList from '@/pages/acs/AcsList';
 import Roles from '@/pages/roles/Roles';
 import ComplaintList from '@/pages/complaints/ComplaintList';
 import ComplaintCategory from '@/pages/complaints/ComplaintCategory';
+import COList from '@/pages/users/COList';
 
 // Route Protection Components
 
@@ -96,6 +97,10 @@ const router = createBrowserRouter([
             {
             path: '/portal/mcs',
             element: <McsList />,
+          },
+           {
+            path: '/portal/cos',
+            element: <COList />,
           },
 
            {path : 'users/create',

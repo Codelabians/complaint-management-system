@@ -9,66 +9,25 @@ import {
   useGetQuery,
   usePatchMutation,
   useDeleteMutation,
+  usePutMutation,
 } from "@/services/apiService";
 import { MessageSquareWarning } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
-const sampleComplaints = [
-  {
-    id: "1",
-    Name: "Street light not working",
-    Status: "SUBMITTED",
-  },
-  {
-    id: "2",
-    Name: "Water supply issue in Sector B",
-    Status: "ASSIGNED",
-  },
-  {
-    id: "3",
-    Name: "Garbage not collected for 3 days",
-    Status: "IN_PROGRESS",
-  },
-  {
-    id: "4",
-    Name: "Sewerage overflow near main road",
-    Status: "FORWARDED_TO_MC",
-  },
-  {
-    id: "5",
-    Name: "Illegal construction complaint",
-    Status: "RESOLVED",
-  },
-  {
-    id: "6",
-    Name: "Noise pollution at night",
-    Status: "DELAYED",
-  },
-  {
-    id: "7",
-    Name: "Broken road causing accidents",
-    Status: "COMPLETED",
-  },
-  {
-    id: "8",
-    Name: "Unauthorized water connection",
-    Status: "REJECTED",
-  },
-];
-
-
 const ComplaintList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
+
   const [formData, setFormData] = useState({
-    name: "",
+    title: "",
     status: "",
   });
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [complaintToDelete, setComplaintToDelete] = useState(null);
+
 
   const {
     data: complaintsData,
@@ -78,12 +37,10 @@ const ComplaintList = () => {
     path: "/dc/complaints",
   });
 
-  const [updateComplaint, { isLoading: isUpdating }] = usePatchMutation();
+  const [updateComplaint, { isLoading: isUpdating }] = usePutMutation();
   const [deleteComplaint, { isLoading: isDeleting }] = useDeleteMutation();
 
-//   const complaints = complaintsData?.data || []; 
-const complaints = sampleComplaints;
-
+  const complaints = complaintsData?.data || [];
 
   const statusOptions = useMemo(
     () => [
@@ -104,8 +61,8 @@ const complaints = sampleComplaints;
     setIsEditMode(true);
     setSelectedComplaint(row);
     setFormData({
-      name: row.name || "",
-      status: row.status || "SUBMITTED",
+      title: row.Title || "",
+      status: row.Status ,
     });
     setIsModalOpen(true);
   };
@@ -123,8 +80,8 @@ const complaints = sampleComplaints;
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (!formData.name.trim()) {
-      toast.error("Complaint name/title is required");
+    if (!formData.title.trim()) {
+      toast.error("Complaint title is required");
       return;
     }
     if (!formData.status) {
@@ -133,13 +90,13 @@ const complaints = sampleComplaints;
     }
 
     const payload = {
-      name: formData.name.trim(),
-      status: formData.status, // already in CAPITAL form
+      title: formData.title.trim(),
+      status: formData.status,
     };
 
     try {
       await updateComplaint({
-        path: `dc/complaints/${selectedComplaint.id}`,
+        path: `dc/complaints/${selectedComplaint._id}`, 
         body: payload,
       }).unwrap();
 
@@ -147,10 +104,14 @@ const complaints = sampleComplaints;
       setIsModalOpen(false);
       setIsEditMode(false);
       setSelectedComplaint(null);
-      setFormData({ name: "", status: "" });
+      setFormData({ title: "", status: "" });
       refetch();
     } catch (error) {
-      toast.error(error?.data?.message || "Failed to update complaint");
+      toast.error(
+        error?.data?.error ||
+        error?.data?.message ||
+        "Failed to update complaint"
+      );
     }
   };
 
@@ -159,30 +120,58 @@ const complaints = sampleComplaints;
 
     try {
       await deleteComplaint({
-        path: `dc/complaints/${complaintToDelete.id}`,
+        path: `dc/complaints/${complaintToDelete._id}`,
       }).unwrap();
 
       toast.success("Complaint deleted successfully!");
       refetch();
     } catch (error) {
-      toast.error(error?.data?.message || "Failed to delete complaint");
+      toast.error(
+        error?.data?.error ||
+        error?.data?.message ||
+        "Failed to delete complaint"
+      );
     } finally {
       setShowDeleteConfirm(false);
       setComplaintToDelete(null);
     }
   };
 
-  // Map data for table
+const getImageUrl = (imagesStr) => {
+  if (!imagesStr || typeof imagesStr !== 'string') return null;
+  
+ 
+  const cleaned = imagesStr.replace(/[<>]/g, '').trim();
+  
+  if (cleaned.startsWith('http') && /\.(jpg|jpeg|png|gif|webp)$/i.test(cleaned)) {
+    return cleaned;
+  }
+  return null;
+};
+
   const mappedComplaints = useMemo(() => {
     return complaints.map((complaint) => ({
-      id: complaint._id,
-      Name: complaint.name || "—",
+      id: complaint._id,              
+      _id: complaint._id,             
+      Title: complaint.title || "—",
       Status: complaint.status || "SUBMITTED",
-      // You can add more fields like: SubmittedBy, Date, etc.
+      Location: complaint.locationName || "—",
+      Area: complaint.areaType || "—",
+      Volunteer: complaint.createdByVolunteerId?.name || "—",
+      Submitted: new Date(complaint.createdAt).toLocaleDateString(),
+      Image: getImageUrl(complaint.images),
     }));
   }, [complaints]);
 
-  const columns = ["Name", "Status"];
+  const columns = [
+    "Image",
+    "Title",
+    "Status",
+    "Location",
+    "Area",
+    "Volunteer",
+    "Submitted",
+  ];
 
   return (
     <>
@@ -190,8 +179,6 @@ const complaints = sampleComplaints;
         title="Complaints"
         icon={MessageSquareWarning}
         count={complaints.length}
-        // If you want to allow creation later, uncomment:
-        // actionButton={<AddButton text="Create" onClick={() => {}} />}
       />
 
       {complaintsLoading ? (
@@ -201,18 +188,17 @@ const complaints = sampleComplaints;
       ) : (
         <Table
           columns={columns}
-          data={sampleComplaints}
+          data={mappedComplaints}
           actions={{
-            edit: true,
-            delete: true,
+            // edit: true,
+            // delete: true,
           }}
           onEdit={handleEdit}
           onDelete={handleDelete}
         />
       )}
 
-      {/* Edit Modal */}
-      <Modal
+      {/* <Modal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
@@ -224,9 +210,9 @@ const complaints = sampleComplaints;
         <form onSubmit={handleSubmit}>
           <div className="space-y-5">
             <FormInput
-              label="Complaint Name/Title"
-              name="name"
-              value={formData.name}
+              label="Complaint Title"
+              name="title"
+              value={formData.title}
               onChange={handleInputChange}
               placeholder="Enter complaint title"
               required
@@ -246,11 +232,7 @@ const complaints = sampleComplaints;
             <div className="flex justify-end gap-3 mt-6">
               <button
                 type="button"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setIsEditMode(false);
-                  setSelectedComplaint(null);
-                }}
+                onClick={() => setIsModalOpen(false)}
                 className="px-6 py-2 rounded-lg font-semibold bg-gray-500 hover:bg-gray-600 text-white transition-all"
                 disabled={isUpdating}
               >
@@ -267,9 +249,8 @@ const complaints = sampleComplaints;
             </div>
           </div>
         </form>
-      </Modal>
+      </Modal> */}
 
-      {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         onClose={() => {
@@ -280,7 +261,7 @@ const complaints = sampleComplaints;
         title="Delete Complaint"
         message={
           complaintToDelete
-            ? `Are you sure you want to delete complaint "${complaintToDelete.Name}"? This action cannot be undone.`
+            ? `Are you sure you want to delete "${complaintToDelete.Title}"? This action cannot be undone.`
             : "Are you sure you want to delete this complaint?"
         }
         confirmText="Delete"

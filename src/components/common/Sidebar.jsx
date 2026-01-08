@@ -3,7 +3,9 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   LayoutDashboard, MapPin, Users, FileText, 
   BarChart3, Settings, LogOut, ChevronDown, 
-  Menu, X, User, ShieldCheck 
+  Menu, X, User, ShieldCheck, 
+  Landmark,
+  Home
 } from 'lucide-react';
 import { clearCredentials } from '@/features/authSlice';
 import { toast } from 'react-toastify';
@@ -20,8 +22,8 @@ const menuItems = [
   },
   {
     id: 'dc',
-    label: 'DC Management',
-    icon: MapPin,
+    label: 'District Council',
+    icon: Landmark,
     submenu: [
       { id: 'dc-list', label: 'All District Councils', route: '/portal/dcs' },
     ]
@@ -38,9 +40,10 @@ const menuItems = [
     {
     id: 'mc',
     label: 'MC Management',
-    icon: MapPin,
+    icon: Home,
     submenu: [
       { id: 'dc-list', label: 'All Municipal Committies', route: '/portal/mcs' },
+      { id: 'co-list', label: 'CO', route: '/portal/cos' },
     ]
   },
   {
@@ -62,9 +65,8 @@ const menuItems = [
     submenu: [
       { id: 'complaint-list', label: 'All Complaints', route: '/portal/complaints' },
       { id: 'complaint-category', label: 'Complaint Category', route: '/portal/complaint-category' },
-      { id: 'complaint-assigned', label: 'Assigned to Me', route: '/complaints/assigned' },
-      { id: 'complaint-pending', label: 'Pending', route: '/complaints/pending' },
-      { id: 'complaint-resolved', label: 'Resolved', route: '/complaints/resolved' }
+      // { id: 'complaint-pending', label: 'Pending', route: '/complaints/pending' },
+      // { id: 'complaint-resolved', label: 'Resolved', route: '/complaints/resolved' }
     ]
   },
   {
