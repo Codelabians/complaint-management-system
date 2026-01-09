@@ -3,11 +3,10 @@ import { toast } from "react-toastify";
 import {
   useGetQuery,
   usePostMutation,
-  usePatchMutation,
-  useDeleteMutation,
   usePutMutation,
+  useDeleteMutation,
 } from "@/services/apiService";
-import { UserCog, Trash2 } from "lucide-react";
+import { Building2, Trash2, Users } from "lucide-react"; // Changed icon to something more suitable for MC
 
 import AddButton from "@/components/common/AddButton";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
@@ -19,15 +18,15 @@ import FormInput from "@/components/forms/Formnput";
 
 const columns = ["Name", "Username", "District", "Tehsil", "Phone", "Status"];
 
-const AcsList = () => {
+const DcEmployee = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedAc, setSelectedAc] = useState(null);
-  
+  const [selectedMc, setSelectedMc] = useState(null);
+
   const [formData, setFormData] = useState({
     name: "",
     username: "",
-    role: "",
+    role: "", // will be prefilled with MC role
     zilaId: "",
     tehsilId: "",
     password: "",
@@ -35,11 +34,13 @@ const AcsList = () => {
   });
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [acToDelete, setAcToDelete] = useState(null);
+  const [mcToDelete, setMcToDelete] = useState(null);
 
+  // Load roles (we'll try to find MC role)
   const { data: rolesData } = useGetQuery({ path: "get-roles" });
   const roles = rolesData?.roles || [];
 
+  // Districts & Tehsils
   const { data: districtsData } = useGetQuery({ path: "zila/all" });
   const districts = districtsData?.data || [];
 
@@ -47,18 +48,19 @@ const AcsList = () => {
   const tehsils = tehsilsData?.tehsils || [];
 
 const {
-  data: acsData,
-  isLoading: acsLoading,
+  data: mcsData,
+  isLoading: mcsLoading,
   refetch,
 } = useGetQuery({
   path: "dc/users/by-role",
-  params: { roleName: "AC" },
+  params: { roleName: "DISTRICT_COUNCIL_EMPLOYEE" },
 });
 
-  const [createAc, { isLoading: isCreating }] = usePostMutation();
-  const [updateAc, { isLoading: isUpdating }] = usePutMutation();
-  const [deleteAc, { isLoading: isDeleting }] = useDeleteMutation();
+  const [createMc, { isLoading: isCreating }] = usePostMutation();
+  const [updateMc, { isLoading: isUpdating }] = usePutMutation();
+  const [deleteMc, { isLoading: isDeleting }] = useDeleteMutation();
 
+  // Role options (you can filter only MC roles if needed)
   const roleOptions = useMemo(() => 
     roles.map(role => ({
       value: role._id,
@@ -98,11 +100,11 @@ const {
 
   const handleCreate = () => {
     setIsEditMode(false);
-    setSelectedAc(null);
+    setSelectedMc(null);
     setFormData({
       name: "",
       username: "",
-      role: "",
+      role: "", // You may pre-select MC role here if you know the ID
       zilaId: "",
       tehsilId: "",
       password: "",
@@ -111,35 +113,32 @@ const {
     setIsModalOpen(true);
   };
 
-const handleEdit = (row) => {
-  const original = row.original;  
+  const handleEdit = (row) => {
+    const original = row.original;
 
-  if (!original) {
-    toast.error("Missing original user data");
-    return;
-  }
+    if (!original) {
+      toast.error("Missing original MC user data");
+      return;
+    }
 
-  setIsEditMode(true);
-  setSelectedAc(original);
-  console.log(original);
-  
+    setIsEditMode(true);
+    setSelectedMc(original);
 
-  setFormData({
-    id : original.id,
-    name: original.name || "",
-    username: original.username || "",
-    role: original.roleId || original.role?.id || "",    
-    zilaId: original.zilaId?._id || original.zilaId || "", 
-    tehsilId: original.tehsilId?._id || "",              
-    password: "",                                        
-    phone: original.phone || "",
-  });
+    setFormData({
+      name: original.name || "",
+      username: original.username || "",
+      role: original.roleId || original.role?.id || "",
+      zilaId: original.zilaId?._id || original.zilaId || "",
+      tehsilId: original.tehsilId?._id || "",
+      password: "",
+      phone: original.phone || "",
+    });
 
-  setIsModalOpen(true);
-};
+    setIsModalOpen(true);
+  };
 
   const handleDelete = (row) => {
-    setAcToDelete(row);
+    setMcToDelete(row);
     setShowDeleteConfirm(true);
   };
 
@@ -152,7 +151,7 @@ const handleEdit = (row) => {
     if (!formData.phone.trim()) return toast.error("Phone is required");
 
     if (!isEditMode && !formData.password.trim()) {
-      return toast.error("Password is required for new AC");
+      return toast.error("Password is required for new MC");
     }
 
     const payload = {
@@ -167,17 +166,17 @@ const handleEdit = (row) => {
 
     try {
       if (isEditMode) {
-        await updateAc({
-          path: `dc/users/${selectedAc._id}/update`,
+        await updateMc({
+          path: `dc/mc/${selectedMc._id}/update`,   // ← updated endpoint
           body: payload,
         }).unwrap();
-        toast.success("AC updated successfully!");
+        toast.success("MC user updated successfully!");
       } else {
-        await createAc({
-          path: "dc/createUser", 
+        await createMc({
+          path: "dc/createUser",                          // ← create endpoint
           body: payload,
         }).unwrap();
-        toast.success("AC created successfully!");
+        toast.success("MC user created successfully!");
       }
 
       setIsModalOpen(false);
@@ -188,53 +187,52 @@ const handleEdit = (row) => {
   };
 
   const confirmDelete = async () => {
-    if (!acToDelete) return;
-    console.log("delete id" , acToDelete);
-    
+    if (!mcToDelete?.original?._id) return;
+
     try {
-      await deleteAc({
-        path: `dc/users/${acToDelete.original._id}/delete`, 
+      await deleteMc({
+        path: `dc/mc/${mcToDelete.original._id}/delete`,  // ← delete endpoint
       }).unwrap();
-      toast.success("AC deleted successfully!");
+      toast.success("MC user deleted successfully!");
       refetch();
     } catch (error) {
       toast.error(error?.data?.message || "Failed to delete");
     } finally {
       setShowDeleteConfirm(false);
-      setAcToDelete(null);
+      setMcToDelete(null);
     }
   };
-const mappedAcs = useMemo(() => {
-  return (acsData?.data || []).map(ac => ({
-    id: ac.id,
-    original: ac,                     
-    Name: ac.name || "—",
-    Username: ac.username || "—",
-    Role: ac.role?.name || "—",
-    District: ac.zilaId?.name || "—",
-    Tehsil: ac.tehsilId?.name || "—",
-    Phone: ac.phone || "—",
-    Status: ac.isActive !== false ? "Active" : "Inactive",
-  }));
-}, [acsData]);
+
+  const mappedMcs = useMemo(() => {
+    return (mcsData?.data || []).map(mc => ({
+      id: mc._id,
+      original: mc,
+      Name: mc.name || "—",
+      Username: mc.username || "—",
+      District: mc.zilaId?.name || "—",
+      Tehsil: mc.tehsilId?.name || "—",
+      Phone: mc.phone || "—",
+      Status: mc.isActive !== false ? "Active" : "Inactive",
+    }));
+  }, [mcsData]);
 
   return (
     <>
       <Header
-        title="ACs"
-        icon={UserCog}
-        count={mappedAcs.length}
-        actionButton={<AddButton text="Create AC" onClick={handleCreate} />}
+        title="District Council Employees"
+        icon={Users}
+        count={mappedMcs.length}
+        actionButton={<AddButton text="Create" onClick={handleCreate} />}
       />
 
-      {acsLoading ? (
+      {mcsLoading ? (
         <div className="flex justify-center items-center min-h-[400px]">
           <Loader />
         </div>
       ) : (
         <Table
           columns={columns}
-          data={mappedAcs}
+          data={mappedMcs}
           actions={{ edit: true, delete: true }}
           onEdit={handleEdit}
           onDelete={handleDelete}
@@ -245,7 +243,7 @@ const mappedAcs = useMemo(() => {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={isEditMode ? "Edit AC" : "Create New AC"}
+        title={isEditMode ? "Edit District Council Employee" : "Create New District Council Employee"}
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-5">
@@ -270,7 +268,7 @@ const mappedAcs = useMemo(() => {
               value={formData.zilaId}
               onChange={handleInputChange}
               options={districtOptions}
-              placeholder="Select District "
+              placeholder="Select District"
             />
 
             <FormInput
@@ -285,13 +283,13 @@ const mappedAcs = useMemo(() => {
             />
 
             <FormInput
-              label={isEditMode ? "New Password " : "Password"}
+              label={isEditMode ? "New Password (optional)" : "Password"}
               name="password"
               type="password"
               value={formData.password}
               onChange={handleInputChange}
               required={!isEditMode}
-              placeholder={isEditMode ? "Enter new password (optional)" : "Enter password"}
+              placeholder={isEditMode ? "Leave empty to keep current" : "Enter password"}
             />
 
             <FormInput label="Phone" name="phone" value={formData.phone} onChange={handleInputChange} required />
@@ -312,7 +310,7 @@ const mappedAcs = useMemo(() => {
               >
                 {isCreating || isUpdating
                   ? isEditMode ? "Updating..." : "Creating..."
-                  : isEditMode ? "Update AC" : "Create AC"}
+                  : isEditMode ? "Update " : "Create "}
               </button>
             </div>
           </div>
@@ -323,11 +321,11 @@ const mappedAcs = useMemo(() => {
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={confirmDelete}
-        title="Delete AC"
+        title="Delete MC User"
         message={
-          acToDelete
-            ? `Are you sure you want to delete "${acToDelete.Name}"?`
-            : "Are you sure you want to delete this AC?"
+          mcToDelete
+            ? `Are you sure you want to delete "${mcToDelete.Name}"?`
+            : "Are you sure you want to delete this MC user?"
         }
         confirmText="Delete"
         cancelText="Cancel"
@@ -338,4 +336,4 @@ const mappedAcs = useMemo(() => {
   );
 };
 
-export default AcsList;
+export default DcEmployee;

@@ -4,60 +4,18 @@ import Header from "@/components/common/Header";
 import Loader from "@/components/common/Loader";
 import Modal from "@/components/common/Modal";
 import Table from "@/components/common/Table";
+import ToggleSwitch from "@/components/common/ToggleSwitch";
 import FormInput from "@/components/forms/Formnput";
 import {
   useGetQuery,
   usePostMutation,
   usePatchMutation,
   useDeleteMutation,
+  usePutMutation,
 } from "@/services/apiService";
 import { ListTodo } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
-
-const sampleCategories = [
-  {
-    id: "1",
-    Name: "Water Supply",
-  },
-  {
-    id: "2",
-    Name: "Electricity",
-  },
-  {
-    id: "3",
-    Name: "Sanitation & Sewerage",
-  },
-  {
-    id: "4",
-    Name: "Road & Infrastructure",
-  },
-  {
-    id: "5",
-    Name: "Garbage Collection",
-  },
-  {
-    id: "6",
-    Name: "Street Lights",
-  },
-  {
-    id: "7",
-    Name: "Illegal Construction",
-  },
-  {
-    id: "8",
-    Name: "Noise Pollution",
-  },
-  {
-    id: "9",
-    Name: "Drainage Issue",
-  },
-  {
-    id: "10",
-    Name: "Other / Miscellaneous",
-  },
-];
-
 
 const ComplaintCategory = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -65,6 +23,7 @@ const ComplaintCategory = () => {
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
+    isActive: true,
   });
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
@@ -75,19 +34,20 @@ const ComplaintCategory = () => {
     isLoading: categoriesLoading,
     refetch,
   } = useGetQuery({
-    path: "/dc/complaint-categories", // ← adjust path according to your API
+    path: "/complains/get", 
   });
 
   const [createCategory, { isLoading: isCreating }] = usePostMutation();
-  const [updateCategory, { isLoading: isUpdating }] = usePatchMutation();
+  const [updateStatus, { isLoading: isStatusUpdating }] = usePatchMutation();
   const [deleteCategory, { isLoading: isDeleting }] = useDeleteMutation();
+  const [updateCategory, { isLoading: isUpdating }] = usePutMutation();
 
-  const categories = categoriesData?.data || []; // adjust based on your API response structure
+  const categories = categoriesData?.data || [];
 
   const handleCreate = () => {
     setIsEditMode(false);
     setSelectedCategory(null);
-    setFormData({ name: "" });
+    setFormData({ name: "", isActive: true });
     setIsModalOpen(true);
   };
 
@@ -95,7 +55,8 @@ const ComplaintCategory = () => {
     setIsEditMode(true);
     setSelectedCategory(row);
     setFormData({
-      name: row.name || "",
+      name: row.Name || "",           
+      isActive: row.isActive ?? true,
     });
     setIsModalOpen(true);
   };
@@ -124,17 +85,15 @@ const ComplaintCategory = () => {
 
     try {
       if (isEditMode) {
-        // UPDATE
         await updateCategory({
-          path: `/dc/complaint-categories/${selectedCategory.id}`,
+          path: `/complains/update/${selectedCategory.id}`,
           body: payload,
         }).unwrap();
 
         toast.success("Category updated successfully!");
       } else {
-        // CREATE
         await createCategory({
-          path: "/dc/complaint-categories",
+          path: "/complains/create",
           body: payload,
         }).unwrap();
 
@@ -144,11 +103,35 @@ const ComplaintCategory = () => {
       setIsModalOpen(false);
       setIsEditMode(false);
       setSelectedCategory(null);
-      setFormData({ name: "" });
-
+      setFormData({ name: "", isActive: true });
       refetch();
     } catch (error) {
-      toast.error(error?.data?.message || "Operation failed");
+      toast.error(
+        error?.data?.error ||
+        error?.data?.message ||
+        "Operation failed"
+      );
+    }
+  };
+
+    const handleStatusToggle = async (categoryId, currentStatus, categoryName) => {
+    try {
+      await updateStatus({
+        path: `/complains/deactivate/${categoryId}`,
+        body: {},
+      }).unwrap();
+
+      toast.success(
+        `Category "${categoryName}" ${currentStatus ? 'deactivated' : 'activated'} successfully!`
+      );
+      refetch();
+    } catch (error) {
+      toast.error(
+        error?.data?.error ||
+        error?.data?.message ||
+        "Failed to update status"
+      );
+      throw error;
     }
   };
 
@@ -157,29 +140,42 @@ const ComplaintCategory = () => {
 
     try {
       await deleteCategory({
-        path: `/dc/complaint-categories/${categoryToDelete.id}`,
+        path: `/complains/delete/${categoryToDelete.id}`, 
       }).unwrap();
 
       toast.success("Category deleted successfully!");
       refetch();
     } catch (error) {
-      toast.error(error?.data?.message || "Failed to delete category");
+      toast.error(
+        error?.data?.error ||
+        error?.data?.message ||
+        "Failed to delete category"
+      );
     } finally {
       setShowDeleteConfirm(false);
       setCategoryToDelete(null);
     }
   };
-
-  // Map data for table display
   const mappedCategories = useMemo(() => {
     return categories.map((cat) => ({
       id: cat._id,
       Name: cat.name || "—",
-      // You can add more fields later (description, createdAt, etc.)
+      isActive: cat.isActive,
+      Status: (
+        <ToggleSwitch
+          isChecked={cat.isActive}
+          onToggle={async (newValue) => {
+            await handleStatusToggle(cat._id, cat.isActive, cat.name);
+          }}
+          dialogTitle={cat.isActive ? "Deactivate Category" : "Activate Category"}
+          dialogMessage={`Are you sure you want to ${cat.isActive ? 'deactivate' : 'activate'} the category "${cat.name}"?`}
+          confirmText={cat.isActive ? "Deactivate" : "Activate"}
+        />
+      ),
     }));
   }, [categories]);
 
-  const columns = ["Name"];
+  const columns = ["Name", "Status"];
 
   return (
     <>
@@ -207,7 +203,6 @@ const ComplaintCategory = () => {
         />
       )}
 
-      {/* Create / Edit Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => {
@@ -260,7 +255,6 @@ const ComplaintCategory = () => {
         </form>
       </Modal>
 
-      {/* Delete Confirmation */}
       <ConfirmDialog
         isOpen={showDeleteConfirm}
         onClose={() => {
@@ -271,7 +265,7 @@ const ComplaintCategory = () => {
         title="Delete Category"
         message={
           categoryToDelete
-            ? `Are you sure you want to delete category "${categoryToDelete.Name}"? This action cannot be undone.`
+            ? `Are you sure you want to delete category "${categoryToDelete.Name}"?`
             : "Are you sure you want to delete this category?"
         }
         confirmText="Delete"

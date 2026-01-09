@@ -11,7 +11,7 @@ import {
   usePatchMutation,
   useDeleteMutation,
 } from "@/services/apiService";
-import { Users } from "lucide-react";
+import { Landmark, Users } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
 
@@ -163,7 +163,7 @@ const DCList = () => {
     <>
       <Header
         title="District Councils"
-        icon={Users}
+        icon={Landmark}
         count={dcsData?.count || dcs.length}
         actionButton={<AddButton text="Create DC" onClick={handleCreate} />}
       />

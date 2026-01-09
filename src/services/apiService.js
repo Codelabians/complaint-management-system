@@ -1,7 +1,12 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
+<<<<<<< HEAD
 // const REACT_APP_API_URL = "https://complaint-system-backend.vercel.app/api/"
 const REACT_APP_API_URL = "http://192.168.1.61:3000/api/"
+=======
+const REACT_APP_API_URL = "https://complaint-system-backend.vercel.app/api/"
+// const REACT_APP_API_URL = "http://192.168.1.29:3000/api/"
+>>>>>>> 629c434a2c830355d07021d35d907aa3d618fb9e
 const API_URL = REACT_APP_API_URL;
 
 // Function to handle blob file download
@@ -36,7 +41,7 @@ const baseQuery = fetchBaseQuery({
 //   if (contentType?.includes("application/json")) {
 //     return result;
 //   } else if (
-//     contentType?.includes("application/octet-stream") ||
+//     contentType?.includes("application/octet-stream") || 
 //     contentType?.includes("application/pdf")
 //   ) {
 //      Handle file download for PDF or other binary data
