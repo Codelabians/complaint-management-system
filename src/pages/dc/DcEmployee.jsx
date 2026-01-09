@@ -6,7 +6,7 @@ import {
   usePutMutation,
   useDeleteMutation,
 } from "@/services/apiService";
-import { Building2, Trash2, UserCircle, UserPlus } from "lucide-react"; 
+import { Building2, Trash2, Users } from "lucide-react"; // Changed icon to something more suitable for MC
 
 import AddButton from "@/components/common/AddButton";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
@@ -18,7 +18,7 @@ import FormInput from "@/components/forms/Formnput";
 
 const columns = ["Name", "Username", "District", "Tehsil", "Phone", "Status"];
 
-const UserList = () => {
+const DcEmployee = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedMc, setSelectedMc] = useState(null);
@@ -26,7 +26,7 @@ const UserList = () => {
   const [formData, setFormData] = useState({
     name: "",
     username: "",
-    role: "", 
+    role: "", // will be prefilled with MC role
     zilaId: "",
     tehsilId: "",
     password: "",
@@ -36,9 +36,11 @@ const UserList = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [mcToDelete, setMcToDelete] = useState(null);
 
+  // Load roles (we'll try to find MC role)
   const { data: rolesData } = useGetQuery({ path: "get-roles" });
   const roles = rolesData?.roles || [];
 
+  // Districts & Tehsils
   const { data: districtsData } = useGetQuery({ path: "zila/all" });
   const districts = districtsData?.data || [];
 
@@ -51,13 +53,14 @@ const {
   refetch,
 } = useGetQuery({
   path: "dc/users/by-role",
-  params: { roleName: "VOLUNTEER" },
+  params: { roleName: "DISTRICT_COUNCIL_EMPLOYEE" },
 });
 
   const [createMc, { isLoading: isCreating }] = usePostMutation();
   const [updateMc, { isLoading: isUpdating }] = usePutMutation();
   const [deleteMc, { isLoading: isDeleting }] = useDeleteMutation();
 
+  // Role options (you can filter only MC roles if needed)
   const roleOptions = useMemo(() => 
     roles.map(role => ({
       value: role._id,
@@ -101,7 +104,7 @@ const {
     setFormData({
       name: "",
       username: "",
-      role: "", 
+      role: "", // You may pre-select MC role here if you know the ID
       zilaId: "",
       tehsilId: "",
       password: "",
@@ -164,13 +167,13 @@ const {
     try {
       if (isEditMode) {
         await updateMc({
-          path: `dc/mc/${selectedMc._id}/update`,   
+          path: `dc/mc/${selectedMc._id}/update`,   // ← updated endpoint
           body: payload,
         }).unwrap();
         toast.success("MC user updated successfully!");
       } else {
         await createMc({
-          path: "dc/createUser",                         
+          path: "dc/createUser",                          // ← create endpoint
           body: payload,
         }).unwrap();
         toast.success("MC user created successfully!");
@@ -188,7 +191,7 @@ const {
 
     try {
       await deleteMc({
-        path: `dc/mc/${mcToDelete.original._id}/delete`,  
+        path: `dc/mc/${mcToDelete.original._id}/delete`,  // ← delete endpoint
       }).unwrap();
       toast.success("MC user deleted successfully!");
       refetch();
@@ -216,13 +219,13 @@ const {
   return (
     <>
       <Header
-        title="Volunteers"
-        icon={UserPlus}
+        title="District Council Employees"
+        icon={Users}
         count={mappedMcs.length}
-        actionButton={<AddButton text="Create " onClick={handleCreate} />}
+        actionButton={<AddButton text="Create" onClick={handleCreate} />}
       />
 
-      {mcsLoading ? ( 
+      {mcsLoading ? (
         <div className="flex justify-center items-center min-h-[400px]">
           <Loader />
         </div>
@@ -236,10 +239,11 @@ const {
         />
       )}
 
+      {/* Create / Edit Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={isEditMode ? "Edit Volunteer" : "Create New Volunteer"}
+        title={isEditMode ? "Edit District Council Employee" : "Create New District Council Employee"}
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-5">
@@ -306,7 +310,7 @@ const {
               >
                 {isCreating || isUpdating
                   ? isEditMode ? "Updating..." : "Creating..."
-                  : isEditMode ? "Update" : "Create"}
+                  : isEditMode ? "Update " : "Create "}
               </button>
             </div>
           </div>
@@ -332,4 +336,4 @@ const {
   );
 };
 
-export default UserList;
+export default DcEmployee;

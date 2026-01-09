@@ -6,7 +6,7 @@ import {
   usePutMutation,
   useDeleteMutation,
 } from "@/services/apiService";
-import { Building2, Trash2, UserCircle, UserPlus } from "lucide-react"; 
+import { Building2, Trash2, Users2Icon } from "lucide-react"; 
 
 import AddButton from "@/components/common/AddButton";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
@@ -16,9 +16,9 @@ import Modal from "@/components/common/Modal";
 import Table from "@/components/common/Table";
 import FormInput from "@/components/forms/Formnput";
 
-const columns = ["Name", "Username", "District", "Tehsil", "Phone", "Status"];
+const columns = ["Name", "Username", "District", "Tehsil", "Municipal Committee", "Phone", "Status"];
 
-const UserList = () => {
+const McEmployee = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedMc, setSelectedMc] = useState(null);
@@ -26,9 +26,10 @@ const UserList = () => {
   const [formData, setFormData] = useState({
     name: "",
     username: "",
-    role: "", 
+    role: "",
     zilaId: "",
     tehsilId: "",
+    mcId: "",
     password: "",
     phone: "",
   });
@@ -45,13 +46,17 @@ const UserList = () => {
   const { data: tehsilsData } = useGetQuery({ path: "tehsil/all" });
   const tehsils = tehsilsData?.tehsils || [];
 
+      const { data: mcData } = useGetQuery({ path: "dc/all/mcs" });
+    const municipalities = mcData?.data || [];
+
+
 const {
   data: mcsData,
   isLoading: mcsLoading,
   refetch,
 } = useGetQuery({
   path: "dc/users/by-role",
-  params: { roleName: "VOLUNTEER" },
+  params: { roleName: "MC_EMPLOYEE" },
 });
 
   const [createMc, { isLoading: isCreating }] = usePostMutation();
@@ -81,6 +86,21 @@ const {
         label: t.name
       }));
   }, [tehsils, formData.zilaId]);
+  
+
+  const mcOptions = useMemo(() => {
+  // If no tehsil selected → show nothing or all (your choice)
+  if (!formData.tehsilId) {
+    return []; // ← or return all if you prefer: municipalities.map(...)
+  }
+
+  return municipalities
+    .filter(mc => mc.tehsilId?._id === formData.tehsilId) // ← key line
+    .map(mc => ({
+      value: mc._id,
+      label: mc.name || "Unnamed MC"
+    }));
+}, [municipalities, formData.tehsilId])
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -104,6 +124,7 @@ const {
       role: "", 
       zilaId: "",
       tehsilId: "",
+        mcId: "",
       password: "",
       phone: "",
     });
@@ -127,6 +148,7 @@ const {
       role: original.roleId || original.role?.id || "",
       zilaId: original.zilaId?._id || original.zilaId || "",
       tehsilId: original.tehsilId?._id || "",
+        mcId: original.mcId?._id || "",
       password: "",
       phone: original.phone || "",
     });
@@ -157,6 +179,7 @@ const {
       roleId: formData.role,
       zilaId: formData.zilaId || undefined,
       tehsilId: formData.tehsilId || undefined,
+        mcId: formData.mcId || undefined,
       phone: formData.phone.trim(),
       ...(formData.password.trim() && { password: formData.password.trim() }),
     };
@@ -170,7 +193,7 @@ const {
         toast.success("MC user updated successfully!");
       } else {
         await createMc({
-          path: "dc/createUser",                         
+          path: "dc/createUser",                        
           body: payload,
         }).unwrap();
         toast.success("MC user created successfully!");
@@ -208,6 +231,7 @@ const {
       Username: mc.username || "—",
       District: mc.zilaId?.name || "—",
       Tehsil: mc.tehsilId?.name || "—",
+      "Municipal Committee": mc.mcId?.name || "—",
       Phone: mc.phone || "—",
       Status: mc.isActive !== false ? "Active" : "Inactive",
     }));
@@ -216,13 +240,13 @@ const {
   return (
     <>
       <Header
-        title="Volunteers"
-        icon={UserPlus}
+        title="Municipal Committee Employee"
+        icon={Users2Icon}
         count={mappedMcs.length}
-        actionButton={<AddButton text="Create " onClick={handleCreate} />}
+        actionButton={<AddButton text="Create MC Employee" onClick={handleCreate} />}
       />
 
-      {mcsLoading ? ( 
+      {mcsLoading ? (
         <div className="flex justify-center items-center min-h-[400px]">
           <Loader />
         </div>
@@ -239,7 +263,7 @@ const {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={isEditMode ? "Edit Volunteer" : "Create New Volunteer"}
+        title={isEditMode ? "Edit MC Employee" : "Create New MC Employee"}
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-5">
@@ -276,6 +300,22 @@ const {
               options={tehsilOptions}
               placeholder={formData.zilaId ? "Select Tehsil" : "Select District first"}
               disabled={!formData.zilaId}
+            />
+
+                    <FormInput
+              label="Municipal Committee"
+              type="select"
+              name="mcId"
+              value={formData.mcId}
+              onChange={handleInputChange}
+              options={mcOptions}
+              placeholder={
+                formData.tehsilId 
+                  ? "Select Municipal Committee" 
+                  : "Select Tehsil first"
+              }
+              disabled={!formData.tehsilId}
+              required
             />
 
             <FormInput
@@ -332,4 +372,4 @@ const {
   );
 };
 
-export default UserList;
+export default McEmployee;

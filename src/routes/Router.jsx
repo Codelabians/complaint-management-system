@@ -24,6 +24,9 @@ import Roles from '@/pages/roles/Roles';
 import ComplaintList from '@/pages/complaints/ComplaintList';
 import ComplaintCategory from '@/pages/complaints/ComplaintCategory';
 import COList from '@/pages/users/COList';
+import DCOList from '@/pages/users/DCOList';
+import DcEmployee from '@/pages/dc/DcEmployee';
+import McEmployee from '@/pages/mc/McEmployee';
 
 // Route Protection Components
 
@@ -91,8 +94,16 @@ const router = createBrowserRouter([
             element: <AcsList />,
           },
           {
-            path: '/portal/dcs',
+            path: '/portal/district-council',
             element: <DCList />,
+          },
+            {
+            path: '/portal/dco',
+            element: <DCOList />,
+          },
+            {
+            path: '/portal/dc-employee',
+            element: <DcEmployee />,
           },
             {
             path: '/portal/mcs',
@@ -101,6 +112,10 @@ const router = createBrowserRouter([
            {
             path: '/portal/cos',
             element: <COList />,
+          },
+            {
+            path: '/portal/mc-employee',
+            element: <McEmployee />,
           },
 
            {path : 'users/create',

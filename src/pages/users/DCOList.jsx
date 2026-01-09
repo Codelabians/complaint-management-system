@@ -6,7 +6,7 @@ import {
   usePutMutation,
   useDeleteMutation,
 } from "@/services/apiService";
-import { Building2, Trash2, UserCircle, UserPlus } from "lucide-react"; 
+import { Building2, Trash2, User } from "lucide-react"; 
 
 import AddButton from "@/components/common/AddButton";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
@@ -16,12 +16,12 @@ import Modal from "@/components/common/Modal";
 import Table from "@/components/common/Table";
 import FormInput from "@/components/forms/Formnput";
 
-const columns = ["Name", "Username", "District", "Tehsil", "Phone", "Status"];
+const columns = ["Name", "Username", "District",  "Phone", "Status"];
 
-const UserList = () => {
+const DCOList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedMc, setSelectedMc] = useState(null);
+  const [selectedCo, setSelectedCo] = useState(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -34,7 +34,7 @@ const UserList = () => {
   });
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [mcToDelete, setMcToDelete] = useState(null);
+  const [coToDelete, setCoToDelete] = useState(null);
 
   const { data: rolesData } = useGetQuery({ path: "get-roles" });
   const roles = rolesData?.roles || [];
@@ -51,12 +51,12 @@ const {
   refetch,
 } = useGetQuery({
   path: "dc/users/by-role",
-  params: { roleName: "VOLUNTEER" },
+  params: { roleName: "DISTRICT_COUNCIL_OFFICER" },
 });
 
-  const [createMc, { isLoading: isCreating }] = usePostMutation();
-  const [updateMc, { isLoading: isUpdating }] = usePutMutation();
-  const [deleteMc, { isLoading: isDeleting }] = useDeleteMutation();
+  const [createCo, { isLoading: isCreating }] = usePostMutation();
+  const [updateCo, { isLoading: isUpdating }] = usePutMutation();
+  const [deleteCo, { isLoading: isDeleting }] = useDeleteMutation();
 
   const roleOptions = useMemo(() => 
     roles.map(role => ({
@@ -97,7 +97,7 @@ const {
 
   const handleCreate = () => {
     setIsEditMode(false);
-    setSelectedMc(null);
+    setSelectedCo(null);
     setFormData({
       name: "",
       username: "",
@@ -119,7 +119,7 @@ const {
     }
 
     setIsEditMode(true);
-    setSelectedMc(original);
+    setSelectedCo(original);
 
     setFormData({
       name: original.name || "",
@@ -135,7 +135,7 @@ const {
   };
 
   const handleDelete = (row) => {
-    setMcToDelete(row);
+    setCoToDelete(row);
     setShowDeleteConfirm(true);
   };
 
@@ -163,14 +163,14 @@ const {
 
     try {
       if (isEditMode) {
-        await updateMc({
-          path: `dc/mc/${selectedMc._id}/update`,   
+        await updateCo({
+          path: `dc/mc/${selectedCo._id}/update`,   // ← updated endpoint
           body: payload,
         }).unwrap();
         toast.success("MC user updated successfully!");
       } else {
-        await createMc({
-          path: "dc/createUser",                         
+        await createCo({
+          path: "dc/createUser",                          // ← create endpoint
           body: payload,
         }).unwrap();
         toast.success("MC user created successfully!");
@@ -184,11 +184,11 @@ const {
   };
 
   const confirmDelete = async () => {
-    if (!mcToDelete?.original?._id) return;
+    if (!coToDelete?.original?._id) return;
 
     try {
-      await deleteMc({
-        path: `dc/mc/${mcToDelete.original._id}/delete`,  
+      await deleteCo({
+        path: `dc/mc/${coToDelete.original._id}/delete`,  // ← delete endpoint
       }).unwrap();
       toast.success("MC user deleted successfully!");
       refetch();
@@ -196,7 +196,7 @@ const {
       toast.error(error?.data?.message || "Failed to delete");
     } finally {
       setShowDeleteConfirm(false);
-      setMcToDelete(null);
+      setCoToDelete(null);
     }
   };
 
@@ -216,13 +216,13 @@ const {
   return (
     <>
       <Header
-        title="Volunteers"
-        icon={UserPlus}
+        title="Cheif Officer"
+        icon={User}
         count={mappedMcs.length}
-        actionButton={<AddButton text="Create " onClick={handleCreate} />}
+        actionButton={<AddButton text="Create" onClick={handleCreate} />}
       />
 
-      {mcsLoading ? ( 
+      {mcsLoading ? (
         <div className="flex justify-center items-center min-h-[400px]">
           <Loader />
         </div>
@@ -236,10 +236,11 @@ const {
         />
       )}
 
+      {/* Create / Edit Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={isEditMode ? "Edit Volunteer" : "Create New Volunteer"}
+        title={isEditMode ? "Edit CO" : "Create CO"}
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-5">
@@ -265,17 +266,6 @@ const {
               onChange={handleInputChange}
               options={districtOptions}
               placeholder="Select District"
-            />
-
-            <FormInput
-              label="Tehsil"
-              type="select"
-              name="tehsilId"
-              value={formData.tehsilId}
-              onChange={handleInputChange}
-              options={tehsilOptions}
-              placeholder={formData.zilaId ? "Select Tehsil" : "Select District first"}
-              disabled={!formData.zilaId}
             />
 
             <FormInput
@@ -306,7 +296,7 @@ const {
               >
                 {isCreating || isUpdating
                   ? isEditMode ? "Updating..." : "Creating..."
-                  : isEditMode ? "Update" : "Create"}
+                  : isEditMode ? "Update CO" : "Create CO"}
               </button>
             </div>
           </div>
@@ -317,11 +307,11 @@ const {
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={confirmDelete}
-        title="Delete MC User"
+        title="Delete CO"
         message={
-          mcToDelete
-            ? `Are you sure you want to delete "${mcToDelete.Name}"?`
-            : "Are you sure you want to delete this MC user?"
+          coToDelete
+            ? `Are you sure you want to delete "${coToDelete.Name}"?`
+            : "Are you sure you want to delete this CO?"
         }
         confirmText="Delete"
         cancelText="Cancel"
@@ -332,4 +322,4 @@ const {
   );
 };
 
-export default UserList;
+export default DCOList;

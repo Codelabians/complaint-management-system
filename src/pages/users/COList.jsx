@@ -6,7 +6,7 @@ import {
   usePutMutation,
   useDeleteMutation,
 } from "@/services/apiService";
-import { Building2, Trash2 } from "lucide-react"; // Changed icon to something more suitable for MC
+import { Building2, Trash2, UserCog } from "lucide-react";
 
 import AddButton from "@/components/common/AddButton";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
@@ -16,7 +16,15 @@ import Modal from "@/components/common/Modal";
 import Table from "@/components/common/Table";
 import FormInput from "@/components/forms/Formnput";
 
-const columns = ["Name", "Username", "District", "Tehsil", "Phone", "Status"];
+const columns = [
+  "Name",
+  "Username",
+  "District",
+  "Tehsil",
+  "Municipal Committee",
+  "Phone",
+  "Status",
+];
 
 const COsList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -26,9 +34,10 @@ const COsList = () => {
   const [formData, setFormData] = useState({
     name: "",
     username: "",
-    role: "", // will be prefilled with MC role
+    role: "",
     zilaId: "",
     tehsilId: "",
+    mcId: "",
     password: "",
     phone: "",
   });
@@ -36,64 +45,83 @@ const COsList = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [mcToDelete, setMcToDelete] = useState(null);
 
-  // Load roles (we'll try to find MC role)
   const { data: rolesData } = useGetQuery({ path: "get-roles" });
   const roles = rolesData?.roles || [];
 
-  // Districts & Tehsils
   const { data: districtsData } = useGetQuery({ path: "zila/all" });
   const districts = districtsData?.data || [];
 
   const { data: tehsilsData } = useGetQuery({ path: "tehsil/all" });
   const tehsils = tehsilsData?.tehsils || [];
 
-const {
-  data: mcsData,
-  isLoading: mcsLoading,
-  refetch,
-} = useGetQuery({
-  path: "dc/users/by-role",
-  params: { roleName: "CO" },
-});
+  const { data: mcData } = useGetQuery({ path: "dc/all/mcs" });
+  const municipalities = mcData?.data || [];
+
+  const {
+    data: mcsData,
+    isLoading: mcsLoading,
+    refetch,
+  } = useGetQuery({
+    path: "dc/users/by-role",
+    params: { roleName: "MC_COO" },
+  });
 
   const [createMc, { isLoading: isCreating }] = usePostMutation();
   const [updateMc, { isLoading: isUpdating }] = usePutMutation();
   const [deleteMc, { isLoading: isDeleting }] = useDeleteMutation();
 
   // Role options (you can filter only MC roles if needed)
-  const roleOptions = useMemo(() => 
-    roles.map(role => ({
-      value: role._id,
-      label: role.name
-    })), 
-  [roles]);
+  const roleOptions = useMemo(
+    () =>
+      roles.map((role) => ({
+        value: role._id,
+        label: role.name,
+      })),
+    [roles],
+  );
 
-  const districtOptions = useMemo(() => 
-    districts.map(zila => ({
-      value: zila._id,
-      label: zila.name
-    })), 
-  [districts]);
+  const districtOptions = useMemo(
+    () =>
+      districts.map((zila) => ({
+        value: zila._id,
+        label: zila.name,
+      })),
+    [districts],
+  );
 
   const tehsilOptions = useMemo(() => {
     if (!formData.zilaId) return [];
     return tehsils
-      .filter(t => t.zilaId?._id === formData.zilaId)
-      .map(t => ({
+      .filter((t) => t.zilaId?._id === formData.zilaId)
+      .map((t) => ({
         value: t._id,
-        label: t.name
+        label: t.name,
       }));
   }, [tehsils, formData.zilaId]);
 
+  const mcOptions = useMemo(() => {
+    // If no tehsil selected → show nothing or all (your choice)
+    if (!formData.tehsilId) {
+      return []; // ← or return all if you prefer: municipalities.map(...)
+    }
+
+    return municipalities
+      .filter((mc) => mc.tehsilId?._id === formData.tehsilId) // ← key line
+      .map((mc) => ({
+        value: mc._id,
+        label: mc.name || "Unnamed MC",
+      }));
+  }, [municipalities, formData.tehsilId]);
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => {
+    setFormData((prev) => {
       const newData = { ...prev, [name]: value };
-      
+
       if (name === "zilaId") {
         newData.tehsilId = "";
       }
-      
+
       return newData;
     });
   };
@@ -107,6 +135,7 @@ const {
       role: "", // You may pre-select MC role here if you know the ID
       zilaId: "",
       tehsilId: "",
+      mcId: "",
       password: "",
       phone: "",
     });
@@ -130,6 +159,7 @@ const {
       role: original.roleId || original.role?.id || "",
       zilaId: original.zilaId?._id || original.zilaId || "",
       tehsilId: original.tehsilId?._id || "",
+      mcId: original.mcId?._id || "",
       password: "",
       phone: original.phone || "",
     });
@@ -160,6 +190,7 @@ const {
       roleId: formData.role,
       zilaId: formData.zilaId || undefined,
       tehsilId: formData.tehsilId || undefined,
+      mcId: formData.mcId || undefined,
       phone: formData.phone.trim(),
       ...(formData.password.trim() && { password: formData.password.trim() }),
     };
@@ -167,13 +198,13 @@ const {
     try {
       if (isEditMode) {
         await updateMc({
-          path: `dc/mc/${selectedMc._id}/update`,   // ← updated endpoint
+          path: `dc/mc/${selectedMc._id}/update`, // ← updated endpoint
           body: payload,
         }).unwrap();
         toast.success("MC user updated successfully!");
       } else {
         await createMc({
-          path: "dc/createUser",                          // ← create endpoint
+          path: "dc/createUser", // ← create endpoint
           body: payload,
         }).unwrap();
         toast.success("MC user created successfully!");
@@ -191,7 +222,7 @@ const {
 
     try {
       await deleteMc({
-        path: `dc/mc/${mcToDelete.original._id}/delete`,  // ← delete endpoint
+        path: `dc/mc/${mcToDelete.original._id}/delete`, // ← delete endpoint
       }).unwrap();
       toast.success("MC user deleted successfully!");
       refetch();
@@ -204,13 +235,14 @@ const {
   };
 
   const mappedMcs = useMemo(() => {
-    return (mcsData?.data || []).map(mc => ({
+    return (mcsData?.data || []).map((mc) => ({
       id: mc._id,
       original: mc,
       Name: mc.name || "—",
       Username: mc.username || "—",
       District: mc.zilaId?.name || "—",
       Tehsil: mc.tehsilId?.name || "—",
+      "Municipal Committee": mc.mcId?.name || "—",
       Phone: mc.phone || "—",
       Status: mc.isActive !== false ? "Active" : "Inactive",
     }));
@@ -219,10 +251,10 @@ const {
   return (
     <>
       <Header
-        title="Municipal Committees (MCs)"
-        icon={Building2}
+        title="Chief Officer "
+        icon={UserCog}
         count={mappedMcs.length}
-        actionButton={<AddButton text="Create MC User" onClick={handleCreate} />}
+        actionButton={<AddButton text="Create" onClick={handleCreate} />}
       />
 
       {mcsLoading ? (
@@ -243,13 +275,25 @@ const {
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
-        title={isEditMode ? "Edit MC User" : "Create New MC User"}
+        title={isEditMode ? "Edit CO" : "Create CO"}
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-5">
-            <FormInput label="Full Name" name="name" value={formData.name} onChange={handleInputChange} required />
-            <FormInput label="Username" name="username" value={formData.username} onChange={handleInputChange} required />
-            
+            <FormInput
+              label="Full Name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              required
+            />
+            <FormInput
+              label="Username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              required
+            />
+
             <FormInput
               label="Role"
               type="select"
@@ -278,8 +322,26 @@ const {
               value={formData.tehsilId}
               onChange={handleInputChange}
               options={tehsilOptions}
-              placeholder={formData.zilaId ? "Select Tehsil" : "Select District first"}
+              placeholder={
+                formData.zilaId ? "Select Tehsil" : "Select District first"
+              }
               disabled={!formData.zilaId}
+            />
+
+            <FormInput
+              label="Municipal Committee"
+              type="select"
+              name="mcId"
+              value={formData.mcId}
+              onChange={handleInputChange}
+              options={mcOptions}
+              placeholder={
+                formData.tehsilId
+                  ? "Select Municipal Committee"
+                  : "Select Tehsil first"
+              }
+              disabled={!formData.tehsilId}
+              required
             />
 
             <FormInput
@@ -289,10 +351,18 @@ const {
               value={formData.password}
               onChange={handleInputChange}
               required={!isEditMode}
-              placeholder={isEditMode ? "Leave empty to keep current" : "Enter password"}
+              placeholder={
+                isEditMode ? "Leave empty to keep current" : "Enter password"
+              }
             />
 
-            <FormInput label="Phone" name="phone" value={formData.phone} onChange={handleInputChange} required />
+            <FormInput
+              label="Phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+              required
+            />
 
             <div className="flex justify-end gap-3 mt-6">
               <button
@@ -309,8 +379,12 @@ const {
                 className="px-6 py-2 rounded-lg font-semibold bg-greenDarkest hover:bg-green-700 text-white disabled:opacity-50"
               >
                 {isCreating || isUpdating
-                  ? isEditMode ? "Updating..." : "Creating..."
-                  : isEditMode ? "Update MC" : "Create MC"}
+                  ? isEditMode
+                    ? "Updating..."
+                    : "Creating..."
+                  : isEditMode
+                    ? "Update MC"
+                    : "Create MC"}
               </button>
             </div>
           </div>

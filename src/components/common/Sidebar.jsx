@@ -18,14 +18,16 @@ const menuItems = [
     id: 'dashboard',
     label: 'Dashboard',
     icon: LayoutDashboard,
-    route: '/dashboard'
+    route: '/portal'
   },
   {
     id: 'dc',
     label: 'District Council',
     icon: Landmark,
     submenu: [
-      { id: 'dc-list', label: 'All District Councils', route: '/portal/dcs' },
+      { id: 'district council', label: 'All District Councils', route: '/portal/district-council' },
+      { id: 'dc-list', label: 'CO', route: '/portal/dco' },
+      { id: 'dc-employee-list', label: 'Employee', route: '/portal/dc-employee' },
     ]
   },
     {
@@ -44,6 +46,7 @@ const menuItems = [
     submenu: [
       { id: 'dc-list', label: 'All Municipal Committies', route: '/portal/mcs' },
       { id: 'co-list', label: 'CO', route: '/portal/cos' },
+      { id: 'mc-employee-list', label: 'MC Employee', route: '/portal/mc-employee' },
     ]
   },
   {
@@ -51,9 +54,6 @@ const menuItems = [
     label: 'User Management',
     icon: Users,
     submenu: [
-      { id: 'ac-list', label: 'Assistant Commissioners', route: '/users/ac' },
-      { id: 'mc-list', label: 'Magistrates', route: '/users/mc' },
-      { id: 'co-list', label: 'Complaint Officers', route: '/users/co' },
       { id: 'user-create', label: 'Create User', route: '/portal/users/create' },
       { id: 'roles', label: 'Roles', route: '/portal/roles' }
     ]
@@ -69,26 +69,26 @@ const menuItems = [
       // { id: 'complaint-resolved', label: 'Resolved', route: '/complaints/resolved' }
     ]
   },
-  {
-    id: 'reports',
-    label: 'Reports & Analytics',
-    icon: BarChart3,
-    submenu: [
-      { id: 'report-tehsil', label: 'Tehsil-wise Report', route: '/reports/tehsil' },
-      { id: 'report-user', label: 'User Performance', route: '/reports/users' },
-      { id: 'report-complaint', label: 'Complaint Analytics', route: '/reports/complaints' }
-    ]
-  },
-  {
-    id: 'settings',
-    label: 'Settings',
-    icon: Settings,
-    submenu: [
-      { id: 'profile', label: 'My Profile', route: '/settings/profile' },
-      { id: 'change-password', label: 'Change Password', route: '/settings/password' },
-      { id: 'system-settings', label: 'System Settings', route: '/settings/system' }
-    ]
-  }
+  // {
+  //   id: 'reports',
+  //   label: 'Reports & Analytics',
+  //   icon: BarChart3,
+  //   submenu: [
+  //     { id: 'report-tehsil', label: 'Tehsil-wise Report', route: '/reports/tehsil' },
+  //     { id: 'report-user', label: 'User Performance', route: '/reports/users' },
+  //     { id: 'report-complaint', label: 'Complaint Analytics', route: '/reports/complaints' }
+  //   ]
+  // },
+  // {
+  //   id: 'settings',
+  //   label: 'Settings',
+  //   icon: Settings,
+  //   submenu: [
+  //     { id: 'profile', label: 'My Profile', route: '/settings/profile' },
+  //     { id: 'change-password', label: 'Change Password', route: '/settings/password' },
+  //     { id: 'system-settings', label: 'System Settings', route: '/settings/system' }
+  //   ]
+  // }
 ];
 
 const Sidebar = () => {
