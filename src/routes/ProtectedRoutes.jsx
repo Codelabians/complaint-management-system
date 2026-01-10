@@ -1,13 +1,27 @@
-import { Navigate } from "react-router-dom";
+// src/utils/PrivateRoute.jsx
+import { useSelector } from "react-redux";
+import { Navigate, Outlet } from "react-router-dom";
 
-const ProtectedRoute = ({ children }) => {
-  const user = localStorage.getItem("adminUser");
+function ProtectedRoutes({ allowedRoles }) {
+  const { token, user } = useSelector((state) => state.auth);
 
-  if (!user) {
+  console.log("[Protected] token:", !!token ? "exists" : "MISSING");
+  console.log("[Protected] user role:", user?.role);
+
+  if (!token) {
+    console.log("[Protected] No token → redirect to login");
     return <Navigate to="/login" replace />;
   }
 
-  return children;
-};
+  // Optional role check (uncomment when ready)
+  // if (allowedRoles && !allowedRoles.includes(user?.role)) {
+  //   return <Navigate to="/unauthorized" replace />;
+  // }
 
-export default ProtectedRoute;
+  console.log("[Protected] Authorized → rendering children");
+
+  // Instead of element prop, we render the nested routes
+  return <Outlet />;
+}
+
+export default ProtectedRoutes;
