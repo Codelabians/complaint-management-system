@@ -1,5 +1,6 @@
 import AddButton from "@/components/common/AddButton";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import Filters from "@/components/common/Filters";
 import Header from "@/components/common/Header";
 import Loader from "@/components/common/Loader";
 import Modal from "@/components/common/Modal";
@@ -25,17 +26,37 @@ const ComplaintList = () => {
     status: "",
   });
 
+  const [filterValues, setFilterValues] = useState({
+    search: "",
+    status: "",
+    categoryId: "",
+    dateRange: { start: "", end: "" },
+  });
+
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [complaintToDelete, setComplaintToDelete] = useState(null);
 
 
-  const {
-    data: complaintsData,
-    isLoading: complaintsLoading,
-    refetch,
-  } = useGetQuery({
-    path: "/dc/complaints",
-  });
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    if (filterValues.search) params.append("search", filterValues.search);
+    if (filterValues.status) params.append("status", filterValues.status);
+    if (filterValues.categoryId) params.append("categoryId", filterValues.categoryId);
+    if (filterValues.dateRange.start) params.append("startDate", filterValues.dateRange.start);
+    if (filterValues.dateRange.end) params.append("endDate", filterValues.dateRange.end);
+    return params.toString();
+  }, [filterValues]);
+
+const {
+  data: complaintsData,
+  isLoading: complaintsLoading,
+  refetch,
+} = useGetQuery({
+  path: `/dc/complaints${queryParams ? `?${queryParams}` : ""}`,
+});
+
+  const { data: categoriesData } = useGetQuery({ path: "/dc/complaint-categories" });
+  const categories = categoriesData?.data || [];
 
   const [updateComplaint, { isLoading: isUpdating }] = usePutMutation();
   const [deleteComplaint, { isLoading: isDeleting }] = useDeleteMutation();
@@ -173,12 +194,56 @@ const getImageUrl = (imagesStr) => {
     "Submitted",
   ];
 
+  const complaintFilters = [
+    {
+      key: "search",
+      type: "text",
+      label: "Search",
+      placeholder: "Title, description...",
+    },
+    {
+      key: "status",
+      type: "select",
+      label: "Status",
+      allLabel: "All Statuses",
+      options: [
+        { value: "SUBMITTED", label: "Submitted" },
+        { value: "pending", label: "Pending" },
+        { value: "progress", label: "In Progress" },
+        { value: "resolveByEmployee", label: "Resolved by Employee" },
+        { value: "RESOLVED", label: "Resolved" },
+        // ... add others as needed
+      ],
+    },
+    {
+      key: "categoryId",
+      type: "select",
+      label: "Category",
+      allLabel: "All Categories",
+      options: categories.map((cat) => ({
+        value: cat._id,
+        label: cat.name || cat.title,
+      })),
+    },
+    {
+      key: "dateRange",
+      type: "dateRange",
+      label: "Date Range",
+    },
+  ];
+
   return (
     <>
       <Header
         title="Complaints"
         icon={MessageSquareWarning}
         count={complaints.length}
+      />
+
+      <Filters
+        filters={complaintFilters}
+        values={filterValues}
+        onChange={setFilterValues}
       />
 
       {complaintsLoading ? (
