@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import {
   useGetQuery,
@@ -6,10 +6,11 @@ import {
   usePutMutation,
   useDeleteMutation,
 } from "@/services/apiService";
-import { Building2, Trash2, UserCog } from "lucide-react";
+import { UserCog } from "lucide-react";
 
 import AddButton from "@/components/common/AddButton";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import Filters from "@/components/common/Filters";
 import Header from "@/components/common/Header";
 import Loader from "@/components/common/Loader";
 import Modal from "@/components/common/Modal";
@@ -31,6 +32,17 @@ const COsList = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedMc, setSelectedMc] = useState(null);
 
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
+  const [filterValues, setFilterValues] = useState({
+    search: "",
+    isActive: "",
+    zilaId: "",
+    tehsilId: "",
+    mcId: "",
+  });
+
   const [formData, setFormData] = useState({
     name: "",
     username: "",
@@ -51,77 +63,94 @@ const COsList = () => {
   const { data: districtsData } = useGetQuery({ path: "zila/all" });
   const districts = districtsData?.data || [];
 
-  const { data: tehsilsData } = useGetQuery({ path: "tehsil/all" });
+  const { data: tehsilsData, isLoading: tehsilsLoading } = useGetQuery({
+    path: "tehsil/all",
+  });
   const tehsils = tehsilsData?.tehsils || [];
 
   const { data: mcData } = useGetQuery({ path: "dc/all/mcs" });
   const municipalities = mcData?.data || [];
+
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+
+    if (filterValues.search) params.append("search", filterValues.search);
+    if (filterValues.isActive) params.append("isActive", filterValues.isActive);
+    if (filterValues.zilaId) params.append("zilaId", filterValues.zilaId);
+    if (filterValues.tehsilId) params.append("tehsilId", filterValues.tehsilId);
+    if (filterValues.mcId) params.append("mcId", filterValues.mcId);
+
+    params.append("page", page);
+    params.append("per_page", perPage);
+
+    return params.toString();
+  }, [filterValues, page, perPage]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterValues]);
 
   const {
     data: mcsData,
     isLoading: mcsLoading,
     refetch,
   } = useGetQuery({
-    path: "dc/users/by-role",
-    params: { roleName: "MC_COO" },
+    path: `dc/users/by-role?roleName=MC_CO&${queryParams}`,
   });
 
   const [createMc, { isLoading: isCreating }] = usePostMutation();
   const [updateMc, { isLoading: isUpdating }] = usePutMutation();
   const [deleteMc, { isLoading: isDeleting }] = useDeleteMutation();
 
-  // Role options (you can filter only MC roles if needed)
   const roleOptions = useMemo(
-    () =>
-      roles.map((role) => ({
-        value: role._id,
-        label: role.name,
-      })),
-    [roles],
+    () => roles.map((role) => ({ value: role._id, label: role.name })),
+    [roles]
   );
 
   const districtOptions = useMemo(
-    () =>
-      districts.map((zila) => ({
-        value: zila._id,
-        label: zila.name,
-      })),
-    [districts],
+    () => districts.map((zila) => ({ value: zila._id, label: zila.name })),
+    [districts]
   );
 
-  const tehsilOptions = useMemo(() => {
+  const filterTehsilOptions = useMemo(() => {
+    if (!filterValues.zilaId) return [];
+    return tehsils
+      .filter((t) => t.zilaId?._id === filterValues.zilaId)
+      .map((t) => ({ value: t._id, label: t.name }));
+  }, [tehsils, filterValues.zilaId]);
+
+  const filterMcOptions = useMemo(() => {
+    if (!filterValues.tehsilId) return [];
+    return municipalities
+      .filter((mc) => mc.tehsilId?._id === filterValues.tehsilId)
+      .map((mc) => ({ value: mc._id, label: mc.name || "Unnamed MC" }));
+  }, [municipalities, filterValues.tehsilId]);
+
+  const modalTehsilOptions = useMemo(() => {
     if (!formData.zilaId) return [];
     return tehsils
       .filter((t) => t.zilaId?._id === formData.zilaId)
-      .map((t) => ({
-        value: t._id,
-        label: t.name,
-      }));
+      .map((t) => ({ value: t._id, label: t.name }));
   }, [tehsils, formData.zilaId]);
 
-  const mcOptions = useMemo(() => {
-    // If no tehsil selected → show nothing or all (your choice)
-    if (!formData.tehsilId) {
-      return []; // ← or return all if you prefer: municipalities.map(...)
-    }
-
+  const modalMcOptions = useMemo(() => {
+    if (!formData.tehsilId) return [];
     return municipalities
-      .filter((mc) => mc.tehsilId?._id === formData.tehsilId) // ← key line
-      .map((mc) => ({
-        value: mc._id,
-        label: mc.name || "Unnamed MC",
-      }));
+      .filter((mc) => mc.tehsilId?._id === formData.tehsilId)
+      .map((mc) => ({ value: mc._id, label: mc.name || "Unnamed MC" }));
   }, [municipalities, formData.tehsilId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => {
       const newData = { ...prev, [name]: value };
-
       if (name === "zilaId") {
         newData.tehsilId = "";
+        newData.mcId = "";
       }
-
+      if (name === "tehsilId") {
+        newData.mcId = "";
+      }
       return newData;
     });
   };
@@ -132,7 +161,7 @@ const COsList = () => {
     setFormData({
       name: "",
       username: "",
-      role: "", // You may pre-select MC role here if you know the ID
+      role: "",
       zilaId: "",
       tehsilId: "",
       mcId: "",
@@ -144,11 +173,7 @@ const COsList = () => {
 
   const handleEdit = (row) => {
     const original = row.original;
-
-    if (!original) {
-      toast.error("Missing original MC user data");
-      return;
-    }
+    if (!original) return toast.error("Missing MC user data");
 
     setIsEditMode(true);
     setSelectedMc(original);
@@ -156,8 +181,8 @@ const COsList = () => {
     setFormData({
       name: original.name || "",
       username: original.username || "",
-      role: original.roleId || original.role?.id || "",
-      zilaId: original.zilaId?._id || original.zilaId || "",
+      role: original.roleId || original.role?._id || "",
+      zilaId: original.zilaId?._id || "",
       tehsilId: original.tehsilId?._id || "",
       mcId: original.mcId?._id || "",
       password: "",
@@ -177,7 +202,7 @@ const COsList = () => {
 
     if (!formData.name.trim()) return toast.error("Name is required");
     if (!formData.username.trim()) return toast.error("Username is required");
-    if (!formData.role) return toast.error("Please select a role");
+    if (!formData.role) return toast.error("Role is required");
     if (!formData.phone.trim()) return toast.error("Phone is required");
 
     if (!isEditMode && !formData.password.trim()) {
@@ -198,19 +223,20 @@ const COsList = () => {
     try {
       if (isEditMode) {
         await updateMc({
-          path: `dc/mc/${selectedMc._id}/update`, // ← updated endpoint
+          path: `dc/mc/${selectedMc._id}/update`,
           body: payload,
         }).unwrap();
         toast.success("MC user updated successfully!");
       } else {
         await createMc({
-          path: "dc/createUser", // ← create endpoint
+          path: "dc/createUser",
           body: payload,
         }).unwrap();
         toast.success("MC user created successfully!");
       }
 
       setIsModalOpen(false);
+      setPage(1);
       refetch();
     } catch (error) {
       toast.error(error?.data?.message || "Operation failed");
@@ -222,9 +248,10 @@ const COsList = () => {
 
     try {
       await deleteMc({
-        path: `dc/mc/${mcToDelete.original._id}/delete`, // ← delete endpoint
+        path: `dc/mc/${mcToDelete.original._id}/delete`,
       }).unwrap();
       toast.success("MC user deleted successfully!");
+      setPage(1);
       refetch();
     } catch (error) {
       toast.error(error?.data?.message || "Failed to delete");
@@ -248,13 +275,61 @@ const COsList = () => {
     }));
   }, [mcsData]);
 
+  const coFilters = [
+    {
+      key: "search",
+      type: "text",
+      label: "Search",
+      placeholder: "Name, username, phone...",
+    },
+    {
+      key: "isActive",
+      type: "select",
+      label: "Status",
+      allLabel: "All Status",
+      options: [
+        { value: "true", label: "Active" },
+        { value: "false", label: "Inactive" },
+      ],
+    },
+    {
+      key: "zilaId",
+      type: "select",
+      label: "District",
+      allLabel: "All Districts",
+      options: districtOptions,
+    },
+    {
+      key: "tehsilId",
+      type: "select",
+      label: "Tehsil",
+      allLabel: "All Tehsils",
+      options: filterTehsilOptions,
+      disabled: !filterValues.zilaId || tehsilsLoading,
+    },
+    {
+      key: "mcId",
+      type: "select",
+      label: "Municipal Committee",
+      allLabel: "All MCs",
+      options: filterMcOptions,
+      disabled: !filterValues.tehsilId,
+    },
+  ];
+
   return (
     <>
       <Header
-        title="Chief Officer "
+        title="Chief Officers"
         icon={UserCog}
-        count={mappedMcs.length}
-        actionButton={<AddButton text="Create" onClick={handleCreate} />}
+        count={mcsData?.pagination?.totalItems || mappedMcs.length}
+        actionButton={<AddButton text="Create CO" onClick={handleCreate} />}
+      />
+
+      <Filters
+        filters={coFilters}
+        values={filterValues}
+        onChange={setFilterValues}
       />
 
       {mcsLoading ? (
@@ -268,6 +343,9 @@ const COsList = () => {
           actions={{ edit: true, delete: true }}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          setPage={setPage}
+          setPerPage={setPerPage}
+          paginationMeta={mcsData?.pagination}
         />
       )}
 
@@ -279,20 +357,8 @@ const COsList = () => {
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-5">
-            <FormInput
-              label="Full Name"
-              name="name"
-              value={formData.name}
-              onChange={handleInputChange}
-              required
-            />
-            <FormInput
-              label="Username"
-              name="username"
-              value={formData.username}
-              onChange={handleInputChange}
-              required
-            />
+            <FormInput label="Full Name" name="name" value={formData.name} onChange={handleInputChange} required />
+            <FormInput label="Username" name="username" value={formData.username} onChange={handleInputChange} required />
 
             <FormInput
               label="Role"
@@ -321,11 +387,15 @@ const COsList = () => {
               name="tehsilId"
               value={formData.tehsilId}
               onChange={handleInputChange}
-              options={tehsilOptions}
+              options={modalTehsilOptions}
               placeholder={
-                formData.zilaId ? "Select Tehsil" : "Select District first"
+                tehsilsLoading
+                  ? "Loading tehsils..."
+                  : formData.zilaId
+                  ? "Select Tehsil"
+                  : "Select District first"
               }
-              disabled={!formData.zilaId}
+              disabled={!formData.zilaId || tehsilsLoading}
             />
 
             <FormInput
@@ -334,7 +404,7 @@ const COsList = () => {
               name="mcId"
               value={formData.mcId}
               onChange={handleInputChange}
-              options={mcOptions}
+              options={modalMcOptions}
               placeholder={
                 formData.tehsilId
                   ? "Select Municipal Committee"
@@ -351,18 +421,10 @@ const COsList = () => {
               value={formData.password}
               onChange={handleInputChange}
               required={!isEditMode}
-              placeholder={
-                isEditMode ? "Leave empty to keep current" : "Enter password"
-              }
+              placeholder={isEditMode ? "Leave empty to keep current" : "Enter password"}
             />
 
-            <FormInput
-              label="Phone"
-              name="phone"
-              value={formData.phone}
-              onChange={handleInputChange}
-              required
-            />
+            <FormInput label="Phone" name="phone" value={formData.phone} onChange={handleInputChange} required />
 
             <div className="flex justify-end gap-3 mt-6">
               <button
@@ -383,8 +445,8 @@ const COsList = () => {
                     ? "Updating..."
                     : "Creating..."
                   : isEditMode
-                    ? "Update MC"
-                    : "Create MC"}
+                  ? "Update CO"
+                  : "Create CO"}
               </button>
             </div>
           </div>
@@ -395,11 +457,11 @@ const COsList = () => {
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={confirmDelete}
-        title="Delete MC User"
+        title="Delete CO"
         message={
           mcToDelete
             ? `Are you sure you want to delete "${mcToDelete.Name}"?`
-            : "Are you sure you want to delete this MC user?"
+            : "Are you sure you want to delete this CO?"
         }
         confirmText="Delete"
         cancelText="Cancel"

@@ -27,6 +27,7 @@ import COList from '@/pages/users/COList';
 import DCOList from '@/pages/users/DCOList';
 import DcEmployee from '@/pages/dc/DcEmployee';
 import McEmployee from '@/pages/mc/McEmployee';
+import ComplaintDetailView from '@/pages/complaints/ComplaintView';
 
 // Route Protection Components
 
@@ -126,6 +127,9 @@ const router = createBrowserRouter([
            },
             {path : '/portal/complaints',
             element : <ComplaintList/>
+           },
+            {path : '/portal/complaints/:id',
+            element : <ComplaintDetailView/>
            },
             {path : '/portal/complaint-category',
             element : <ComplaintCategory/>

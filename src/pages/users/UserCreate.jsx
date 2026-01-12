@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import {
   useGetQuery,
@@ -6,10 +6,11 @@ import {
   usePutMutation,
   useDeleteMutation,
 } from "@/services/apiService";
-import { Building2, Trash2, UserCircle, UserPlus } from "lucide-react"; 
+import { UserPlus } from "lucide-react";
 
 import AddButton from "@/components/common/AddButton";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import Filters from "@/components/common/Filters";
 import Header from "@/components/common/Header";
 import Loader from "@/components/common/Loader";
 import Modal from "@/components/common/Modal";
@@ -21,12 +22,22 @@ const columns = ["Name", "Username", "District", "Tehsil", "Phone", "Status"];
 const UserList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
-  const [selectedMc, setSelectedMc] = useState(null);
+  const [selectedVolunteer, setSelectedVolunteer] = useState(null);
+
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
+  const [filterValues, setFilterValues] = useState({
+    search: "",
+    isActive: "",
+    zilaId: "",
+    tehsilId: "",
+  });
 
   const [formData, setFormData] = useState({
     name: "",
     username: "",
-    role: "", 
+    role: "",
     zilaId: "",
     tehsilId: "",
     password: "",
@@ -34,7 +45,7 @@ const UserList = () => {
   });
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [mcToDelete, setMcToDelete] = useState(null);
+  const [volunteerToDelete, setVolunteerToDelete] = useState(null);
 
   const { data: rolesData } = useGetQuery({ path: "get-roles" });
   const roles = rolesData?.roles || [];
@@ -42,66 +53,83 @@ const UserList = () => {
   const { data: districtsData } = useGetQuery({ path: "zila/all" });
   const districts = districtsData?.data || [];
 
-  const { data: tehsilsData } = useGetQuery({ path: "tehsil/all" });
+  const { data: tehsilsData, isLoading: tehsilsLoading } = useGetQuery({
+    path: "tehsil/all",
+  });
   const tehsils = tehsilsData?.tehsils || [];
 
-const {
-  data: mcsData,
-  isLoading: mcsLoading,
-  refetch,
-} = useGetQuery({
-  path: "dc/users/by-role",
-  params: { roleName: "VOLUNTEER" },
-});
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
 
-  const [createMc, { isLoading: isCreating }] = usePostMutation();
-  const [updateMc, { isLoading: isUpdating }] = usePutMutation();
-  const [deleteMc, { isLoading: isDeleting }] = useDeleteMutation();
+    if (filterValues.search) params.append("search", filterValues.search);
+    if (filterValues.isActive) params.append("isActive", filterValues.isActive);
+    if (filterValues.zilaId) params.append("zilaId", filterValues.zilaId);
+    if (filterValues.tehsilId) params.append("tehsilId", filterValues.tehsilId);
 
-  const roleOptions = useMemo(() => 
-    roles.map(role => ({
-      value: role._id,
-      label: role.name
-    })), 
-  [roles]);
+    params.append("page", page);
+    params.append("per_page", perPage);
 
-  const districtOptions = useMemo(() => 
-    districts.map(zila => ({
-      value: zila._id,
-      label: zila.name
-    })), 
-  [districts]);
+    return params.toString();
+  }, [filterValues, page, perPage]);
 
-  const tehsilOptions = useMemo(() => {
+  useEffect(() => {
+    setPage(1);
+  }, [filterValues]);
+
+  const {
+    data: volunteersData,
+    isLoading: volunteersLoading,
+    refetch,
+  } = useGetQuery({
+    path: `dc/users/by-role?roleName=VOLUNTEER&${queryParams}`,
+  });
+
+  const [createVolunteer, { isLoading: isCreating }] = usePostMutation();
+  const [updateVolunteer, { isLoading: isUpdating }] = usePutMutation();
+  const [deleteVolunteer, { isLoading: isDeleting }] = useDeleteMutation();
+
+  const roleOptions = useMemo(
+    () => roles.map((role) => ({ value: role._id, label: role.name })),
+    [roles]
+  );
+
+  const districtOptions = useMemo(
+    () => districts.map((zila) => ({ value: zila._id, label: zila.name })),
+    [districts]
+  );
+
+  const filterTehsilOptions = useMemo(() => {
+    if (!filterValues.zilaId) return [];
+    return tehsils
+      .filter((t) => t.zilaId?._id === filterValues.zilaId)
+      .map((t) => ({ value: t._id, label: t.name }));
+  }, [tehsils, filterValues.zilaId]);
+
+  const modalTehsilOptions = useMemo(() => {
     if (!formData.zilaId) return [];
     return tehsils
-      .filter(t => t.zilaId?._id === formData.zilaId)
-      .map(t => ({
-        value: t._id,
-        label: t.name
-      }));
+      .filter((t) => t.zilaId?._id === formData.zilaId)
+      .map((t) => ({ value: t._id, label: t.name }));
   }, [tehsils, formData.zilaId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => {
+    setFormData((prev) => {
       const newData = { ...prev, [name]: value };
-      
       if (name === "zilaId") {
         newData.tehsilId = "";
       }
-      
       return newData;
     });
   };
 
   const handleCreate = () => {
     setIsEditMode(false);
-    setSelectedMc(null);
+    setSelectedVolunteer(null);
     setFormData({
       name: "",
       username: "",
-      role: "", 
+      role: "",
       zilaId: "",
       tehsilId: "",
       password: "",
@@ -112,20 +140,16 @@ const {
 
   const handleEdit = (row) => {
     const original = row.original;
-
-    if (!original) {
-      toast.error("Missing original MC user data");
-      return;
-    }
+    if (!original) return toast.error("Missing volunteer data");
 
     setIsEditMode(true);
-    setSelectedMc(original);
+    setSelectedVolunteer(original);
 
     setFormData({
       name: original.name || "",
       username: original.username || "",
-      role: original.roleId || original.role?.id || "",
-      zilaId: original.zilaId?._id || original.zilaId || "",
+      role: original.roleId || original.role?._id || "",
+      zilaId: original.zilaId?._id || "",
       tehsilId: original.tehsilId?._id || "",
       password: "",
       phone: original.phone || "",
@@ -135,7 +159,7 @@ const {
   };
 
   const handleDelete = (row) => {
-    setMcToDelete(row);
+    setVolunteerToDelete(row);
     setShowDeleteConfirm(true);
   };
 
@@ -144,11 +168,11 @@ const {
 
     if (!formData.name.trim()) return toast.error("Name is required");
     if (!formData.username.trim()) return toast.error("Username is required");
-    if (!formData.role) return toast.error("Please select a role");
+    if (!formData.role) return toast.error("Role is required");
     if (!formData.phone.trim()) return toast.error("Phone is required");
 
     if (!isEditMode && !formData.password.trim()) {
-      return toast.error("Password is required for new MC");
+      return toast.error("Password is required for new volunteer");
     }
 
     const payload = {
@@ -163,20 +187,21 @@ const {
 
     try {
       if (isEditMode) {
-        await updateMc({
-          path: `dc/mc/${selectedMc._id}/update`,   
+        await updateVolunteer({
+          path: `dc/users/${selectedVolunteer._id}/update`,
           body: payload,
         }).unwrap();
-        toast.success("MC user updated successfully!");
+        toast.success("Volunteer updated successfully!");
       } else {
-        await createMc({
-          path: "dc/createUser",                         
+        await createVolunteer({
+          path: "dc/createUser",
           body: payload,
         }).unwrap();
-        toast.success("MC user created successfully!");
+        toast.success("Volunteer created successfully!");
       }
 
       setIsModalOpen(false);
+      setPage(1);
       refetch();
     } catch (error) {
       toast.error(error?.data?.message || "Operation failed");
@@ -184,58 +209,103 @@ const {
   };
 
   const confirmDelete = async () => {
-    if (!mcToDelete?.original?._id) return;
+    if (!volunteerToDelete?.original?._id) return;
 
     try {
-      await deleteMc({
-        path: `dc/mc/${mcToDelete.original._id}/delete`,  
+      await deleteVolunteer({
+        path: `dc/users/${volunteerToDelete.original._id}/delete`,
       }).unwrap();
-      toast.success("MC user deleted successfully!");
+      toast.success("Volunteer deleted successfully!");
+      setPage(1);
       refetch();
     } catch (error) {
       toast.error(error?.data?.message || "Failed to delete");
     } finally {
       setShowDeleteConfirm(false);
-      setMcToDelete(null);
+      setVolunteerToDelete(null);
     }
   };
 
-  const mappedMcs = useMemo(() => {
-    return (mcsData?.data || []).map(mc => ({
-      id: mc._id,
-      original: mc,
-      Name: mc.name || "—",
-      Username: mc.username || "—",
-      District: mc.zilaId?.name || "—",
-      Tehsil: mc.tehsilId?.name || "—",
-      Phone: mc.phone || "—",
-      Status: mc.isActive !== false ? "Active" : "Inactive",
+  const mappedVolunteers = useMemo(() => {
+    return (volunteersData?.data || []).map((vol) => ({
+      id: vol._id,
+      original: vol,
+      Name: vol.name || "—",
+      Username: vol.username || "—",
+      District: vol.zilaId?.name || "—",
+      Tehsil: vol.tehsilId?.name || "—",
+      Phone: vol.phone || "—",
+      Status: vol.isActive !== false ? "Active" : "Inactive",
     }));
-  }, [mcsData]);
+  }, [volunteersData]);
+
+  const volunteerFilters = [
+    {
+      key: "search",
+      type: "text",
+      label: "Search",
+      placeholder: "Name, username, phone...",
+    },
+    {
+      key: "isActive",
+      type: "select",
+      label: "Status",
+      allLabel: "All Status",
+      options: [
+        { value: "true", label: "Active" },
+        { value: "false", label: "Inactive" },
+      ],
+    },
+    {
+      key: "zilaId",
+      type: "select",
+      label: "District",
+      allLabel: "All Districts",
+      options: districtOptions,
+    },
+    {
+      key: "tehsilId",
+      type: "select",
+      label: "Tehsil",
+      allLabel: "All Tehsils",
+      options: filterTehsilOptions,
+      disabled: !filterValues.zilaId || tehsilsLoading,
+    },
+  ];
 
   return (
     <>
       <Header
         title="Volunteers"
         icon={UserPlus}
-        count={mappedMcs.length}
-        actionButton={<AddButton text="Create " onClick={handleCreate} />}
+        count={volunteersData?.pagination?.totalItems || mappedVolunteers.length}
+        actionButton={<AddButton text="Create Volunteer" onClick={handleCreate} />}
       />
 
-      {mcsLoading ? ( 
+      <Filters
+        filters={volunteerFilters}
+        values={filterValues}
+        onChange={setFilterValues}
+      />
+
+      {volunteersLoading ? (
         <div className="flex justify-center items-center min-h-[400px]">
           <Loader />
         </div>
       ) : (
         <Table
           columns={columns}
-          data={mappedMcs}
+          data={mappedVolunteers}
           actions={{ edit: true, delete: true }}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          setPage={setPage}
+          setPerPage={setPerPage}
+          paginationMeta={volunteersData?.pagination}
         />
       )}
 
+      {/* Create / Edit Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -243,9 +313,21 @@ const {
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-5">
-            <FormInput label="Full Name" name="name" value={formData.name} onChange={handleInputChange} required />
-            <FormInput label="Username" name="username" value={formData.username} onChange={handleInputChange} required />
-            
+            <FormInput
+              label="Full Name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              required
+            />
+            <FormInput
+              label="Username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              required
+            />
+
             <FormInput
               label="Role"
               type="select"
@@ -273,9 +355,15 @@ const {
               name="tehsilId"
               value={formData.tehsilId}
               onChange={handleInputChange}
-              options={tehsilOptions}
-              placeholder={formData.zilaId ? "Select Tehsil" : "Select District first"}
-              disabled={!formData.zilaId}
+              options={modalTehsilOptions}
+              placeholder={
+                tehsilsLoading
+                  ? "Loading tehsils..."
+                  : formData.zilaId
+                  ? "Select Tehsil"
+                  : "Select District first"
+              }
+              disabled={!formData.zilaId || tehsilsLoading}
             />
 
             <FormInput
@@ -288,7 +376,13 @@ const {
               placeholder={isEditMode ? "Leave empty to keep current" : "Enter password"}
             />
 
-            <FormInput label="Phone" name="phone" value={formData.phone} onChange={handleInputChange} required />
+            <FormInput
+              label="Phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+              required
+            />
 
             <div className="flex justify-end gap-3 mt-6">
               <button
@@ -305,8 +399,12 @@ const {
                 className="px-6 py-2 rounded-lg font-semibold bg-greenDarkest hover:bg-green-700 text-white disabled:opacity-50"
               >
                 {isCreating || isUpdating
-                  ? isEditMode ? "Updating..." : "Creating..."
-                  : isEditMode ? "Update" : "Create"}
+                  ? isEditMode
+                    ? "Updating..."
+                    : "Creating..."
+                  : isEditMode
+                  ? "Update Volunteer"
+                  : "Create Volunteer"}
               </button>
             </div>
           </div>
@@ -317,11 +415,11 @@ const {
         isOpen={showDeleteConfirm}
         onClose={() => setShowDeleteConfirm(false)}
         onConfirm={confirmDelete}
-        title="Delete MC User"
+        title="Delete Volunteer"
         message={
-          mcToDelete
-            ? `Are you sure you want to delete "${mcToDelete.Name}"?`
-            : "Are you sure you want to delete this MC user?"
+          volunteerToDelete
+            ? `Are you sure you want to delete "${volunteerToDelete.Name}"?`
+            : "Are you sure you want to delete this volunteer?"
         }
         confirmText="Delete"
         cancelText="Cancel"

@@ -1,16 +1,16 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { toast } from "react-toastify";
 import {
   useGetQuery,
   usePostMutation,
-  usePatchMutation,
-  useDeleteMutation,
   usePutMutation,
+  useDeleteMutation,
 } from "@/services/apiService";
-import { UserCog, Trash2 } from "lucide-react";
+import { UserCog } from "lucide-react";
 
 import AddButton from "@/components/common/AddButton";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
+import Filters from "@/components/common/Filters";
 import Header from "@/components/common/Header";
 import Loader from "@/components/common/Loader";
 import Modal from "@/components/common/Modal";
@@ -23,7 +23,17 @@ const AcsList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedAc, setSelectedAc] = useState(null);
-  
+
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
+  const [filterValues, setFilterValues] = useState({
+    search: "",
+    isActive: "",
+    zilaId: "",
+    tehsilId: "",
+  });
+
   const [formData, setFormData] = useState({
     name: "",
     username: "",
@@ -43,55 +53,72 @@ const AcsList = () => {
   const { data: districtsData } = useGetQuery({ path: "zila/all" });
   const districts = districtsData?.data || [];
 
-  const { data: tehsilsData } = useGetQuery({ path: "tehsil/all" });
+  const { data: tehsilsData, isLoading: tehsilsLoading } = useGetQuery({
+    path: "tehsil/all",
+  });
   const tehsils = tehsilsData?.tehsils || [];
 
-const {
-  data: acsData,
-  isLoading: acsLoading,
-  refetch,
-} = useGetQuery({
-  path: "dc/users/by-role",
-  params: { roleName: "AC" },
-});
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+
+    if (filterValues.search) params.append("search", filterValues.search);
+    if (filterValues.isActive) params.append("isActive", filterValues.isActive);
+    if (filterValues.zilaId) params.append("zilaId", filterValues.zilaId);
+    if (filterValues.tehsilId) params.append("tehsilId", filterValues.tehsilId);
+
+    params.append("page", page);
+    params.append("per_page", perPage);
+
+    return params.toString();
+  }, [filterValues, page, perPage]);
+
+  useEffect(() => {
+    setPage(1);
+  }, [filterValues]);
+
+  const {
+    data: acsData,
+    isLoading: acsLoading,
+    refetch,
+  } = useGetQuery({
+    path: `dc/users/by-role?roleName=AC&${queryParams}`,
+  });
 
   const [createAc, { isLoading: isCreating }] = usePostMutation();
   const [updateAc, { isLoading: isUpdating }] = usePutMutation();
   const [deleteAc, { isLoading: isDeleting }] = useDeleteMutation();
 
-  const roleOptions = useMemo(() => 
-    roles.map(role => ({
-      value: role._id,
-      label: role.name
-    })), 
-  [roles]);
+  const roleOptions = useMemo(
+    () => roles.map((role) => ({ value: role._id, label: role.name })),
+    [roles]
+  );
 
-  const districtOptions = useMemo(() => 
-    districts.map(zila => ({
-      value: zila._id,
-      label: zila.name
-    })), 
-  [districts]);
+  const districtOptions = useMemo(
+    () => districts.map((zila) => ({ value: zila._id, label: zila.name })),
+    [districts]
+  );
 
-  const tehsilOptions = useMemo(() => {
+  const filterTehsilOptions = useMemo(() => {
+    if (!filterValues.zilaId) return [];
+    return tehsils
+      .filter((t) => t.zilaId?._id === filterValues.zilaId)
+      .map((t) => ({ value: t._id, label: t.name }));
+  }, [tehsils, filterValues.zilaId]);
+
+  const modalTehsilOptions = useMemo(() => {
     if (!formData.zilaId) return [];
     return tehsils
-      .filter(t => t.zilaId?._id === formData.zilaId)
-      .map(t => ({
-        value: t._id,
-        label: t.name
-      }));
+      .filter((t) => t.zilaId?._id === formData.zilaId)
+      .map((t) => ({ value: t._id, label: t.name }));
   }, [tehsils, formData.zilaId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => {
+    setFormData((prev) => {
       const newData = { ...prev, [name]: value };
-      
       if (name === "zilaId") {
         newData.tehsilId = "";
       }
-      
       return newData;
     });
   };
@@ -111,32 +138,27 @@ const {
     setIsModalOpen(true);
   };
 
-const handleEdit = (row) => {
-  const original = row.original;  
+  const handleEdit = (row) => {
+    const original = row.original;
+    if (!original) {
+      return toast.error("Missing user data");
+    }
 
-  if (!original) {
-    toast.error("Missing original user data");
-    return;
-  }
+    setIsEditMode(true);
+    setSelectedAc(original);
 
-  setIsEditMode(true);
-  setSelectedAc(original);
-  console.log(original);
-  
+    setFormData({
+      name: original.name || "",
+      username: original.username || "",
+      role: original.roleId || original.role?._id || "",
+      zilaId: original.zilaId?._id || "",
+      tehsilId: original.tehsilId?._id || "",
+      password: "",
+      phone: original.phone || "",
+    });
 
-  setFormData({
-    id : original.id,
-    name: original.name || "",
-    username: original.username || "",
-    role: original.roleId || original.role?.id || "",    
-    zilaId: original.zilaId?._id || original.zilaId || "", 
-    tehsilId: original.tehsilId?._id || "",              
-    password: "",                                        
-    phone: original.phone || "",
-  });
-
-  setIsModalOpen(true);
-};
+    setIsModalOpen(true);
+  };
 
   const handleDelete = (row) => {
     setAcToDelete(row);
@@ -174,13 +196,14 @@ const handleEdit = (row) => {
         toast.success("AC updated successfully!");
       } else {
         await createAc({
-          path: "dc/createUser", 
+          path: "dc/createUser",
           body: payload,
         }).unwrap();
         toast.success("AC created successfully!");
       }
 
       setIsModalOpen(false);
+      setPage(1); 
       refetch();
     } catch (error) {
       toast.error(error?.data?.message || "Operation failed");
@@ -188,14 +211,14 @@ const handleEdit = (row) => {
   };
 
   const confirmDelete = async () => {
-    if (!acToDelete) return;
-    console.log("delete id" , acToDelete);
-    
+    if (!acToDelete?.original?._id) return;
+
     try {
       await deleteAc({
-        path: `dc/users/${acToDelete.original._id}/delete`, 
+        path: `dc/users/${acToDelete.original._id}/delete`,
       }).unwrap();
       toast.success("AC deleted successfully!");
+      setPage(1); 
       refetch();
     } catch (error) {
       toast.error(error?.data?.message || "Failed to delete");
@@ -204,27 +227,67 @@ const handleEdit = (row) => {
       setAcToDelete(null);
     }
   };
-const mappedAcs = useMemo(() => {
-  return (acsData?.data || []).map(ac => ({
-    id: ac.id,
-    original: ac,                     
-    Name: ac.name || "—",
-    Username: ac.username || "—",
-    Role: ac.role?.name || "—",
-    District: ac.zilaId?.name || "—",
-    Tehsil: ac.tehsilId?.name || "—",
-    Phone: ac.phone || "—",
-    Status: ac.isActive !== false ? "Active" : "Inactive",
-  }));
-}, [acsData]);
+
+  const mappedAcs = useMemo(() => {
+    return (acsData?.data || []).map((ac) => ({
+      id: ac._id,
+      original: ac,
+      Name: ac.name || "—",
+      Username: ac.username || "—",
+      District: ac.zilaId?.name || "—",
+      Tehsil: ac.tehsilId?.name || "—",
+      Phone: ac.phone || "—",
+      Status: ac.isActive !== false ? "Active" : "Inactive",
+    }));
+  }, [acsData]);
+
+  const acFilters = [
+    {
+      key: "search",
+      type: "text",
+      label: "Search",
+      placeholder: "Name, username, phone...",
+    },
+    {
+      key: "isActive",
+      type: "select",
+      label: "Status",
+      allLabel: "All Status",
+      options: [
+        { value: "true", label: "Active" },
+        { value: "false", label: "Inactive" },
+      ],
+    },
+    {
+      key: "zilaId",
+      type: "select",
+      label: "District",
+      allLabel: "All Districts",
+      options: districtOptions,
+    },
+    {
+      key: "tehsilId",
+      type: "select",
+      label: "Tehsil",
+      allLabel: "All Tehsils",
+      options: filterTehsilOptions,
+      disabled: !filterValues.zilaId || tehsilsLoading,
+    },
+  ];
 
   return (
     <>
       <Header
         title="ACs"
         icon={UserCog}
-        count={mappedAcs.length}
+        count={acsData?.pagination?.totalItems || mappedAcs.length}
         actionButton={<AddButton text="Create AC" onClick={handleCreate} />}
+      />
+
+      <Filters
+        filters={acFilters}
+        values={filterValues}
+        onChange={setFilterValues}
       />
 
       {acsLoading ? (
@@ -238,10 +301,12 @@ const mappedAcs = useMemo(() => {
           actions={{ edit: true, delete: true }}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          setPage={setPage}
+          setPerPage={setPerPage}
+          paginationMeta={acsData?.pagination}
         />
       )}
 
-      {/* Create / Edit Modal */}
       <Modal
         isOpen={isModalOpen}
         onClose={() => setIsModalOpen(false)}
@@ -249,9 +314,21 @@ const mappedAcs = useMemo(() => {
       >
         <form onSubmit={handleSubmit}>
           <div className="space-y-5">
-            <FormInput label="Full Name" name="name" value={formData.name} onChange={handleInputChange} required />
-            <FormInput label="Username" name="username" value={formData.username} onChange={handleInputChange} required />
-            
+            <FormInput
+              label="Full Name"
+              name="name"
+              value={formData.name}
+              onChange={handleInputChange}
+              required
+            />
+            <FormInput
+              label="Username"
+              name="username"
+              value={formData.username}
+              onChange={handleInputChange}
+              required
+            />
+
             <FormInput
               label="Role"
               type="select"
@@ -270,7 +347,7 @@ const mappedAcs = useMemo(() => {
               value={formData.zilaId}
               onChange={handleInputChange}
               options={districtOptions}
-              placeholder="Select District "
+              placeholder="Select District"
             />
 
             <FormInput
@@ -279,13 +356,19 @@ const mappedAcs = useMemo(() => {
               name="tehsilId"
               value={formData.tehsilId}
               onChange={handleInputChange}
-              options={tehsilOptions}
-              placeholder={formData.zilaId ? "Select Tehsil" : "Select District first"}
-              disabled={!formData.zilaId}
+              options={modalTehsilOptions}
+              placeholder={
+                tehsilsLoading
+                  ? "Loading tehsils..."
+                  : formData.zilaId
+                  ? "Select Tehsil"
+                  : "Select District first"
+              }
+              disabled={!formData.zilaId || tehsilsLoading}
             />
 
             <FormInput
-              label={isEditMode ? "New Password " : "Password"}
+              label={isEditMode ? "New Password (optional)" : "Password"}
               name="password"
               type="password"
               value={formData.password}
@@ -294,7 +377,13 @@ const mappedAcs = useMemo(() => {
               placeholder={isEditMode ? "Enter new password (optional)" : "Enter password"}
             />
 
-            <FormInput label="Phone" name="phone" value={formData.phone} onChange={handleInputChange} required />
+            <FormInput
+              label="Phone"
+              name="phone"
+              value={formData.phone}
+              onChange={handleInputChange}
+              required
+            />
 
             <div className="flex justify-end gap-3 mt-6">
               <button
@@ -311,8 +400,12 @@ const mappedAcs = useMemo(() => {
                 className="px-6 py-2 rounded-lg font-semibold bg-greenDarkest hover:bg-green-700 text-white disabled:opacity-50"
               >
                 {isCreating || isUpdating
-                  ? isEditMode ? "Updating..." : "Creating..."
-                  : isEditMode ? "Update AC" : "Create AC"}
+                  ? isEditMode
+                    ? "Updating..."
+                    : "Creating..."
+                  : isEditMode
+                  ? "Update AC"
+                  : "Create AC"}
               </button>
             </div>
           </div>

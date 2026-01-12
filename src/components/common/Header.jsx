@@ -1,7 +1,10 @@
 import React from "react";
+import { useSelector } from "react-redux";
 
 
 const Header = ({ title, icon: Icon, count, actionButton }) => {
+  const user = useSelector((state) => state.auth.user)
+  const role = user?.role || ''
   return (
     <div className="w-full px-6 py-2 shadow-lg bg-greenDarkest rounded">
       <div className="flex items-center justify-between max-w-7xl mx-auto">
@@ -11,6 +14,7 @@ const Header = ({ title, icon: Icon, count, actionButton }) => {
           </div>
           <h1 className="text-xl font-semibold text-white">{title}</h1>
         </div>
+        {role === "DC" &&
        <div className="flex items-center gap-4">
         {/* {count !== undefined && (
           <div
@@ -22,6 +26,7 @@ const Header = ({ title, icon: Icon, count, actionButton }) => {
         )} */}
         {actionButton}
         </div>
+        }
       </div>
     </div>
   );

@@ -27,6 +27,15 @@ const TehsilList = () => {
   });
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [tehsilToDelete, setTehsilToDelete] = useState(null);
+    const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
+  const queryParams = useMemo(() => {
+  const params = new URLSearchParams();
+  params.append("page", page);
+  params.append("per_page", perPage);  
+  return params.toString();
+}, [page, perPage]);
 
   const { data, isLoading: districtsLoading } = useGetQuery({
     path: "zila/all",
@@ -35,7 +44,7 @@ const TehsilList = () => {
     data: tehsilsData,
     isLoading: tehsilLoading,
     refetch,
-  } = useGetQuery({ path: "tehsil/all" });
+  } = useGetQuery({ path: `tehsil/all${queryParams ? `?${queryParams}` : ""}` });
 
   const [createTehsil, { isLoading: isCreating }] = usePostMutation();
   const [updateTehsil, { isLoading: isUpdating }] = usePatchMutation();
@@ -182,6 +191,9 @@ const TehsilList = () => {
           }}
           onEdit={handleEdit}
           onDelete={handleDelete}
+             setPage={setPage}
+          setPerPage={setPerPage}
+          paginationMeta={tehsilsData?.pagination}
         />
       )}
 

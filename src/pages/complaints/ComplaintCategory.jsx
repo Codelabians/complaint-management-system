@@ -1,3 +1,14 @@
+import React, { useEffect, useMemo, useState } from "react";
+import { toast } from "react-toastify";
+import {
+  useGetQuery,
+  usePostMutation,
+  usePutMutation,
+  useDeleteMutation,
+  usePatchMutation,
+} from "@/services/apiService";
+import { ListTodo } from "lucide-react";
+
 import AddButton from "@/components/common/AddButton";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import Header from "@/components/common/Header";
@@ -6,21 +17,16 @@ import Modal from "@/components/common/Modal";
 import Table from "@/components/common/Table";
 import ToggleSwitch from "@/components/common/ToggleSwitch";
 import FormInput from "@/components/forms/Formnput";
-import {
-  useGetQuery,
-  usePostMutation,
-  usePatchMutation,
-  useDeleteMutation,
-  usePutMutation,
-} from "@/services/apiService";
-import { ListTodo } from "lucide-react";
-import { useMemo, useState } from "react";
-import { toast } from "react-toastify";
 
 const ComplaintCategory = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(null);
+
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
+
   const [formData, setFormData] = useState({
     name: "",
     isActive: true,
@@ -29,20 +35,33 @@ const ComplaintCategory = () => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [categoryToDelete, setCategoryToDelete] = useState(null);
 
+  // ── Query Params with Pagination ───────────────────────────────────────
+  const queryParams = useMemo(() => {
+    const params = new URLSearchParams();
+    params.append("page", page);
+    params.append("per_page", perPage);
+    return params.toString();
+  }, [page, perPage]);
+
   const {
     data: categoriesData,
     isLoading: categoriesLoading,
     refetch,
   } = useGetQuery({
-    path: "/complains/get", 
+    path: `/complains/get?${queryParams}`,
   });
 
   const [createCategory, { isLoading: isCreating }] = usePostMutation();
-  const [updateStatus, { isLoading: isStatusUpdating }] = usePatchMutation();
-  const [deleteCategory, { isLoading: isDeleting }] = useDeleteMutation();
   const [updateCategory, { isLoading: isUpdating }] = usePutMutation();
+  const [deleteCategory, { isLoading: isDeleting }] = useDeleteMutation();
+  const [updateStatus, { isLoading: isStatusUpdating }] = usePatchMutation();
 
   const categories = categoriesData?.data || [];
+
+  // Reset page to 1 after create/update/delete (good UX)
+  useEffect(() => {
+    // Optional: reset when modal closes after success
+  }, [isModalOpen]);
 
   const handleCreate = () => {
     setIsEditMode(false);
@@ -55,7 +74,7 @@ const ComplaintCategory = () => {
     setIsEditMode(true);
     setSelectedCategory(row);
     setFormData({
-      name: row.Name || "",           
+      name: row.Name || "",
       isActive: row.isActive ?? true,
     });
     setIsModalOpen(true);
@@ -81,6 +100,7 @@ const ComplaintCategory = () => {
 
     const payload = {
       name: formData.name.trim(),
+      // isActive is handled separately via toggle, no need to send here
     };
 
     try {
@@ -89,14 +109,12 @@ const ComplaintCategory = () => {
           path: `/complains/update/${selectedCategory.id}`,
           body: payload,
         }).unwrap();
-
         toast.success("Category updated successfully!");
       } else {
         await createCategory({
           path: "/complains/create",
           body: payload,
         }).unwrap();
-
         toast.success("Category created successfully!");
       }
 
@@ -104,17 +122,14 @@ const ComplaintCategory = () => {
       setIsEditMode(false);
       setSelectedCategory(null);
       setFormData({ name: "", isActive: true });
+      setPage(1); // Reset to first page after success
       refetch();
     } catch (error) {
-      toast.error(
-        error?.data?.error ||
-        error?.data?.message ||
-        "Operation failed"
-      );
+      toast.error(error?.data?.message || "Operation failed");
     }
   };
 
-    const handleStatusToggle = async (categoryId, currentStatus, categoryName) => {
+  const handleStatusToggle = async (categoryId, currentStatus, categoryName) => {
     try {
       await updateStatus({
         path: `/complains/deactivate/${categoryId}`,
@@ -122,16 +137,11 @@ const ComplaintCategory = () => {
       }).unwrap();
 
       toast.success(
-        `Category "${categoryName}" ${currentStatus ? 'deactivated' : 'activated'} successfully!`
+        `Category "${categoryName}" ${currentStatus ? "deactivated" : "activated"} successfully!`
       );
       refetch();
     } catch (error) {
-      toast.error(
-        error?.data?.error ||
-        error?.data?.message ||
-        "Failed to update status"
-      );
-      throw error;
+      toast.error(error?.data?.message || "Failed to update status");
     }
   };
 
@@ -140,22 +150,20 @@ const ComplaintCategory = () => {
 
     try {
       await deleteCategory({
-        path: `/complains/delete/${categoryToDelete.id}`, 
+        path: `/complains/delete/${categoryToDelete.id}`,
       }).unwrap();
 
       toast.success("Category deleted successfully!");
+      setPage(1); // Reset to first page
       refetch();
     } catch (error) {
-      toast.error(
-        error?.data?.error ||
-        error?.data?.message ||
-        "Failed to delete category"
-      );
+      toast.error(error?.data?.message || "Failed to delete category");
     } finally {
       setShowDeleteConfirm(false);
       setCategoryToDelete(null);
     }
   };
+
   const mappedCategories = useMemo(() => {
     return categories.map((cat) => ({
       id: cat._id,
@@ -168,21 +176,19 @@ const ComplaintCategory = () => {
             await handleStatusToggle(cat._id, cat.isActive, cat.name);
           }}
           dialogTitle={cat.isActive ? "Deactivate Category" : "Activate Category"}
-          dialogMessage={`Are you sure you want to ${cat.isActive ? 'deactivate' : 'activate'} the category "${cat.name}"?`}
+          dialogMessage={`Are you sure you want to ${cat.isActive ? "deactivate" : "activate"} the category "${cat.name}"?`}
           confirmText={cat.isActive ? "Deactivate" : "Activate"}
         />
       ),
     }));
   }, [categories]);
 
-  const columns = ["Name", "Status"];
-
   return (
     <>
       <Header
         title="Complaint Categories"
         icon={ListTodo}
-        count={categories.length}
+        count={categoriesData?.pagination?.total || categories.length}
         actionButton={<AddButton text="Add Category" onClick={handleCreate} />}
       />
 
@@ -192,7 +198,7 @@ const ComplaintCategory = () => {
         </div>
       ) : (
         <Table
-          columns={columns}
+          columns={["Name", "Status"]}
           data={mappedCategories}
           actions={{
             edit: true,
@@ -200,6 +206,9 @@ const ComplaintCategory = () => {
           }}
           onEdit={handleEdit}
           onDelete={handleDelete}
+          setPage={setPage}
+          setPerPage={setPerPage}
+          paginationMeta={categoriesData?.pagination}
         />
       )}
 

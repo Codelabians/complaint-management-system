@@ -1,3 +1,4 @@
+import StatCard from "@/components/cards/StatCard";
 import AddButton from "@/components/common/AddButton";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import Filters from "@/components/common/Filters";
@@ -15,11 +16,15 @@ import {
 import { MessageSquareWarning } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
+import { useNavigate } from "react-router-dom"; // Add this import
 
 const ComplaintList = () => {
+  const navigate = useNavigate(); // Add this hook
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
+  const [page, setPage] = useState(1);
+  const [perPage, setPerPage] = useState(10);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -44,18 +49,20 @@ const ComplaintList = () => {
     if (filterValues.categoryId) params.append("categoryId", filterValues.categoryId);
     if (filterValues.dateRange.start) params.append("startDate", filterValues.dateRange.start);
     if (filterValues.dateRange.end) params.append("endDate", filterValues.dateRange.end);
+    params.append("page", page);
+    params.append("per_page", perPage);
     return params.toString();
-  }, [filterValues]);
+  }, [filterValues, page, perPage]);
 
-const {
-  data: complaintsData,
-  isLoading: complaintsLoading,
-  refetch,
-} = useGetQuery({
-  path: `/dc/complaints${queryParams ? `?${queryParams}` : ""}`,
-});
+  const {
+    data: complaintsData,
+    isLoading: complaintsLoading,
+    refetch,
+  } = useGetQuery({
+    path: `/complaints/my-area${queryParams ? `?${queryParams}` : ""}`,
+  });
 
-  const { data: categoriesData } = useGetQuery({ path: "/dc/complaint-categories" });
+  const { data: categoriesData } = useGetQuery({ path: "/complains/get" });
   const categories = categoriesData?.data || [];
 
   const [updateComplaint, { isLoading: isUpdating }] = usePutMutation();
@@ -78,12 +85,17 @@ const {
     []
   );
 
+  // Add view handler
+  const handleView = (row) => {
+    navigate(`/portal/complaints/${row._id}`);
+  };
+
   const handleEdit = (row) => {
     setIsEditMode(true);
     setSelectedComplaint(row);
     setFormData({
       title: row.Title || "",
-      status: row.Status ,
+      status: row.Status,
     });
     setIsModalOpen(true);
   };
@@ -117,7 +129,7 @@ const {
 
     try {
       await updateComplaint({
-        path: `dc/complaints/${selectedComplaint._id}`, 
+        path: `dc/complaints/${selectedComplaint._id}`,
         body: payload,
       }).unwrap();
 
@@ -158,22 +170,19 @@ const {
     }
   };
 
-const getImageUrl = (imagesStr) => {
-  if (!imagesStr || typeof imagesStr !== 'string') return null;
-  
- 
-  const cleaned = imagesStr.replace(/[<>]/g, '').trim();
-  
-  if (cleaned.startsWith('http') && /\.(jpg|jpeg|png|gif|webp)$/i.test(cleaned)) {
-    return cleaned;
-  }
-  return null;
-};
+  const getImageUrl = (imagesStr) => {
+    if (!imagesStr || typeof imagesStr !== 'string') return null;
+    const cleaned = imagesStr.replace(/[<>]/g, '').trim();
+    if (cleaned.startsWith('http') && /\.(jpg|jpeg|png|gif|webp)$/i.test(cleaned)) {
+      return cleaned;
+    }
+    return null;
+  };
 
   const mappedComplaints = useMemo(() => {
     return complaints.map((complaint) => ({
-      id: complaint._id,              
-      _id: complaint._id,             
+      id: complaint._id,
+      _id: complaint._id,
       Title: complaint.title || "—",
       Status: complaint.status || "SUBMITTED",
       Location: complaint.locationName || "—",
@@ -212,7 +221,6 @@ const getImageUrl = (imagesStr) => {
         { value: "progress", label: "In Progress" },
         { value: "resolveByEmployee", label: "Resolved by Employee" },
         { value: "RESOLVED", label: "Resolved" },
-        // ... add others as needed
       ],
     },
     {
@@ -239,6 +247,10 @@ const getImageUrl = (imagesStr) => {
         icon={MessageSquareWarning}
         count={complaints.length}
       />
+      <StatCard 
+        complaints={complaints} 
+        isLoading={complaintsLoading} 
+      />
 
       <Filters
         filters={complaintFilters}
@@ -255,15 +267,20 @@ const getImageUrl = (imagesStr) => {
           columns={columns}
           data={mappedComplaints}
           actions={{
-            // edit: true,
+            edit: true,
+            view: true,
             // delete: true,
           }}
+          onView={handleView} // Add this
           onEdit={handleEdit}
           onDelete={handleDelete}
+          setPage={setPage}
+          setPerPage={setPerPage}
+          paginationMeta={complaintsData?.pagination}
         />
       )}
 
-      {/* <Modal
+      <Modal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
@@ -314,7 +331,7 @@ const getImageUrl = (imagesStr) => {
             </div>
           </div>
         </form>
-      </Modal> */}
+      </Modal>
 
       <ConfirmDialog
         isOpen={showDeleteConfirm}

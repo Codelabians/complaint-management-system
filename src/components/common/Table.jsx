@@ -1,29 +1,56 @@
 import { ChevronLeft, ChevronRight, Edit, Eye, Trash } from "lucide-react";
 import { useState } from "react";
 import ImageModal from "../ImgModal";
+import { useSelector } from "react-redux";
 
 const Table = ({
-  data = [],
-  columns = [],           
+  data = [],                   
+  columns = [],
   actions = {},
-  itemsPerPage = 10,
   onEdit,
-  onView,
   onDelete,
-  customActions = []
+  onView,
+  setPage,                      
+  setPerPage,                   
+  paginationMeta = null,       
+  itemsPerPage = 10,            
 }) => {
-  const [currentPage, setCurrentPage] = useState(1);
   const [imageModal, setImageModal] = useState({ isOpen: false, url: '' });
 
-  // Pagination calculations
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = data.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(data.length / itemsPerPage);
+  const user = useSelector((state) => state.auth.user);
+  const role = user?.role || '';
+
+  const isServerSide = !!paginationMeta;
+
+  const currentPage = isServerSide 
+    ? paginationMeta.currentPage || paginationMeta.current_page || 1
+    : 1;  
+
+  const totalPages = isServerSide 
+    ? paginationMeta.totalPages || paginationMeta.total_pages || 1
+    : Math.ceil(data.length / itemsPerPage);
+
+  const totalItems = isServerSide 
+    ? paginationMeta.totalItems || paginationMeta.total || 0
+    : data.length;
+
+  const perPage = isServerSide 
+    ? paginationMeta.itemsPerPage || paginationMeta.per_page || itemsPerPage
+    : itemsPerPage;
+
+  const from = isServerSide 
+    ? paginationMeta.from || ((currentPage - 1) * perPage + 1)
+    : ((currentPage - 1) * perPage + 1);
+
+  const to = isServerSide 
+    ? paginationMeta.to || Math.min(from + data.length - 1, totalItems)
+    : Math.min(from + data.length - 1, totalItems);
 
   const handlePageChange = (pageNumber) => {
     if (pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
+      if (isServerSide && setPage) {
+        setPage(pageNumber);
+      }
     }
   };
 
@@ -38,7 +65,7 @@ const Table = ({
            (value.startsWith('http') && value.includes('image'));
   };
 
-  const showActions = actions.view || actions.edit || actions.delete || customActions.length > 0;
+  const showActions = actions.view || actions.edit || actions.delete;
 
   const renderCellContent = (value, rowIndex, columnKey) => {
     if (isImageUrl(value)) {
@@ -51,101 +78,60 @@ const Table = ({
         />
       );
     }
-    return value ?? '-'; // Fallback for null/undefined
+    return value ?? '—';
   };
 
   return (
     <div className="w-full">
-      {/* Table Container */}
+      {/* Table */}
       <div className="overflow-x-auto rounded-lg shadow-lg mt-6 border border-greenPrimary/30">
         <table className="w-full min-w-max">
-          {/* Table Header */}
           <thead className="bg-greenPrimary text-greenBackground">
             <tr className="border-b-2 border-greenPrimary">
-              <th className="py-3 px-6 text-left  w-16">
-                S.No
-              </th>
-              {columns.map((columnKey, index) => (
-                <th
-                  key={index}
-                  className="py-3 px-6 text-left"
-                >
-                  {columnKey.charAt(0).toUpperCase() + columnKey.slice(1)}
+              <th className="py-3 px-6 text-left w-16">S.No</th>
+              {columns.map((col, i) => (
+                <th key={i} className="py-3 px-6 text-left">
+                  {col}
                 </th>
               ))}
-              {showActions && (
-                <th className="py-3 px-6 text-left  w-40">
-                  Actions
-                </th>
+              {role === "DC" && showActions && (
+                <th className="py-3 px-6 text-left w-40">Actions</th>
               )}
             </tr>
           </thead>
 
-          {/* Table Body */}
           <tbody className="divide-y divide-greenPrimary/20">
-            {currentItems.length > 0 ? (
-              currentItems.map((row, rowIndex) => (
-                <tr
-                  key={rowIndex}
-                  className="hover:bg-greenLight/10 transition-colors"
-                >
-                  <td className="py-2 px-6 text-greenDark ">
-                    {indexOfFirstItem + rowIndex + 1}
+            {data.length > 0 ? (
+              data.map((row, rowIndex) => (
+                <tr key={rowIndex} className="hover:bg-greenLight/10 transition-colors">
+                  <td className="py-2 px-6 text-greenDark">
+                    {from + rowIndex}
                   </td>
 
                   {columns.map((columnKey, colIndex) => (
-                    <td
-                      key={colIndex}
-                      className="py-2 px-6 text-greenDark"
-                    >
+                    <td key={colIndex} className="py-2 px-6 text-greenDark">
                       {renderCellContent(row[columnKey], rowIndex, columnKey)}
                     </td>
                   ))}
 
-                  {showActions && (
+                  { role === "DC" && showActions && (
                     <td className="py-2 px-6">
                       <div className="flex items-center gap-2">
                         {actions.view && (
-                          <button
-                            onClick={() => onView?.(row)}
-                            className="p-2 rounded-lg bg-greenPrimary/10 hover:bg-greenPrimary/20 text-greenPrimary transition-colors"
-                            title="View"
-                          >
-                            <Eye size={16} />
+                          <button onClick={() => onView?.(row)} title="View">
+                            <Eye size={16} className="text-greenPrimary" />
                           </button>
                         )}
-                        {actions.edit && (
-                          <button
-                            onClick={() => onEdit?.(row)}
-                            className="p-2 rounded-lg bg-greenLight/20 hover:bg-greenLight/30 text-greenDarkest transition-colors"
-                            title="Edit"
-                          >
-                            <Edit size={16} />
+                        {actions.edit && onEdit && (
+                          <button onClick={() => onEdit(row)} title="Edit">
+                            <Edit size={16} className="text-greenDarkest" />
                           </button>
                         )}
-                        {actions.delete && (
-                          <button
-                            onClick={() => onDelete?.(row)}
-                            className="p-2 rounded-lg bg-red-100 hover:bg-red-200 text-red-600 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash size={16} />
+                        {actions.delete && onDelete && (
+                          <button onClick={() => onDelete(row)} title="Delete">
+                            <Trash size={16} className="text-red-600" />
                           </button>
                         )}
-                        {customActions.map((action, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => action.onClick?.(row)}
-                            className="p-2 rounded-lg transition-colors"
-                            style={{
-                              backgroundColor: action.bgColor || 'rgba(90, 120, 99, 0.1)',
-                              color: action.textColor || '#5A7863'
-                            }}
-                            title={action.title}
-                          >
-                            {action.icon}
-                          </button>
-                        ))}
                       </div>
                     </td>
                   )}
@@ -153,10 +139,7 @@ const Table = ({
               ))
             ) : (
               <tr>
-                <td
-                  colSpan={columns.length + (showActions ? 2 : 1)}
-                  className="py-12 text-center  text-greenLight/70 italic"
-                >
+                <td colSpan={columns.length + (showActions ? 2 : 1)} className="py-12 text-center text-greenLight/70 italic">
                   No data available
                 </td>
               </tr>
@@ -165,45 +148,48 @@ const Table = ({
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* Pagination - only show if more than 1 page */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-between px-6 py-4 mt-6 bg-greenDarkest/80 rounded-lg shadow">
-          <div className="text-greenLight">
-            Showing <span className="font-medium">{indexOfFirstItem + 1}</span> to{' '}
-            <span className="font-medium">{Math.min(indexOfLastItem, data.length)}</span> of{' '}
-            <span className="font-medium">{data.length}</span>
+        <div className="flex items-center justify-between px-6 py-4 mt-6 bg-greenDarkest rounded-lg shadow">
+          <div className="text-white">
+            Showing <span className="font-medium">{from}</span> to{' '}
+            <span className="font-medium">{to}</span> of{' '}
+            <span className="font-medium">{totalItems}</span> complaints
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="p-2 rounded-lg bg-greenPrimary/20 hover:bg-greenPrimary/40 text-greenLight disabled:opacity-40 transition-colors"
+              className="p-2 rounded-lg bg-greenPrimary hover:bg-greenPrimary text-white disabled:opacity-40"
             >
               <ChevronLeft size={20} />
             </button>
 
-            {Array.from({ length: Math.min(totalPages, 7) }, (_, i) => {
-              const page = currentPage + i - Math.min(3, currentPage - 1);
-              return page > 0 && page <= totalPages ? (
+            {Array.from({ length: totalPages }, (_, i) => i + 1)
+              .filter(p => 
+                p === 1 || 
+                p === totalPages || 
+                Math.abs(p - currentPage) <= 2
+              )
+              .map(page => (
                 <button
                   key={page}
                   onClick={() => handlePageChange(page)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`px-4 py-2 rounded-lg font-medium ${
                     currentPage === page
                       ? 'bg-greenPrimary text-white'
-                      : 'bg-greenDark/40 hover:bg-greenPrimary/30 text-greenLight'
+                      : 'bg-greenDark hover:bg-greenPrimary text-white'
                   }`}
                 >
                   {page}
                 </button>
-              ) : null;
-            })}
+              ))}
 
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="p-2 rounded-lg bg-greenPrimary/20 hover:bg-greenPrimary/40 text-greenLight disabled:opacity-40 transition-colors"
+              className="p-2 rounded-lg bg-greenPrimary/20 hover:bg-greenPrimary/40 text-white disabled:opacity-40"
             >
               <ChevronRight size={20} />
             </button>
@@ -211,7 +197,6 @@ const Table = ({
         </div>
       )}
 
-      {/* Image Modal */}
       <ImageModal
         isOpen={imageModal.isOpen}
         imageUrl={imageModal.url}

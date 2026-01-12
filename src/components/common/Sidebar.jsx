@@ -9,9 +9,22 @@ import {
 } from 'lucide-react';
 import { clearCredentials } from '@/features/authSlice';
 import { toast } from 'react-toastify';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 
+
+
+
+const Sidebar = () => {
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [expandedMenus, setExpandedMenus] = useState({});
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const location = useLocation();
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+
+  const user = useSelector((state) => state.auth.user);
+  const role = user?.role
 
 const menuItems = [
   {
@@ -20,35 +33,41 @@ const menuItems = [
     icon: LayoutDashboard,
     route: '/portal'
   },
-  {
-    id: 'dc',
-    label: 'District Council',
-    icon: Landmark,
-    submenu: [
-      { id: 'district council', label: 'All District Councils', route: '/portal/district-council' },
-      { id: 'dc-list', label: 'CO', route: '/portal/dco' },
-      { id: 'dc-employee-list', label: 'Employee', route: '/portal/dc-employee' },
-    ]
-  },
-    {
-    id: 'tehsil',
-    label: 'Tehsil Management',
-    icon: MapPin,
-    submenu: [
-      { id: 'tehsil-list', label: 'All Tehsils', route: '/portal/tehsils' },
-      { id: 'ac-list', label: 'AC', route: '/portal/acs' },
-    ]
-  },
-    {
-    id: 'mc',
-    label: 'MC Management',
-    icon: Home,
-    submenu: [
-      { id: 'dc-list', label: 'All Municipal Committies', route: '/portal/mcs' },
-      { id: 'co-list', label: 'CO', route: '/portal/cos' },
-      { id: 'mc-employee-list', label: 'MC Employee', route: '/portal/mc-employee' },
-    ]
-  },
+
+  ...(role !== "AC" && role !== "MC_CO"
+    ? [
+        {
+          id: 'dc',
+          label: 'District Council',
+          icon: Landmark,
+          submenu: [
+            { id: 'district-council', label: 'All District Councils', route: '/portal/district-council' },
+            { id: 'dc-list', label: 'CO', route: '/portal/dco' },
+            { id: 'dc-employee-list', label: 'Employee', route: '/portal/dc-employee' },
+          ]
+        },
+        {
+          id: 'tehsil',
+          label: 'Tehsil Management',
+          icon: MapPin,
+          submenu: [
+            { id: 'tehsil-list', label: 'All Tehsils', route: '/portal/tehsils' },
+            { id: 'ac-list', label: 'AC', route: '/portal/acs' },
+          ]
+        }
+      ]
+    : []),
+...(role !== "mc_co" ? [{
+  id: 'mc',
+  label: 'MC Management',
+  icon: Home,
+  submenu: [
+    { id: 'mc-list', label: 'All Municipal Committees', route: '/portal/mcs' },
+    { id: 'co-list', label: 'CO', route: '/portal/cos' },
+    { id: 'mc-employee-list', label: 'MC Employee', route: '/portal/mc-employee' },
+  ]
+}] : []),
+
   {
     id: 'users',
     label: 'User Management',
@@ -58,6 +77,7 @@ const menuItems = [
       { id: 'roles', label: 'Roles', route: '/portal/roles' }
     ]
   },
+
   {
     id: 'complaints',
     label: 'Complaints',
@@ -65,39 +85,11 @@ const menuItems = [
     submenu: [
       { id: 'complaint-list', label: 'All Complaints', route: '/portal/complaints' },
       { id: 'complaint-category', label: 'Complaint Category', route: '/portal/complaint-category' },
-      // { id: 'complaint-pending', label: 'Pending', route: '/complaints/pending' },
-      // { id: 'complaint-resolved', label: 'Resolved', route: '/complaints/resolved' }
     ]
   },
-  // {
-  //   id: 'reports',
-  //   label: 'Reports & Analytics',
-  //   icon: BarChart3,
-  //   submenu: [
-  //     { id: 'report-tehsil', label: 'Tehsil-wise Report', route: '/reports/tehsil' },
-  //     { id: 'report-user', label: 'User Performance', route: '/reports/users' },
-  //     { id: 'report-complaint', label: 'Complaint Analytics', route: '/reports/complaints' }
-  //   ]
-  // },
-  // {
-  //   id: 'settings',
-  //   label: 'Settings',
-  //   icon: Settings,
-  //   submenu: [
-  //     { id: 'profile', label: 'My Profile', route: '/settings/profile' },
-  //     { id: 'change-password', label: 'Change Password', route: '/settings/password' },
-  //     { id: 'system-settings', label: 'System Settings', route: '/settings/system' }
-  //   ]
-  // }
 ];
 
-const Sidebar = () => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
-  const [expandedMenus, setExpandedMenus] = useState({});
-  const [isLoggingOut, setIsLoggingOut] = useState(false);
-  const location = useLocation();
-  const dispatch = useDispatch();
-  const navigate = useNavigate();
+    
 
   const toggleSidebar = () => setIsSidebarOpen(!isSidebarOpen);
   

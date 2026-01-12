@@ -57,7 +57,7 @@ import { useState } from "react";
                 ? "md:grid-cols-2"
                 : filters.length === 3
                 ? "md:grid-cols-3"
-                : "md:grid-cols-2 lg:grid-cols-4"
+                : "md:grid-cols-2 lg:grid-cols-5"
             } gap-5`}
           >
             {filters.map((filter) => {
@@ -79,7 +79,7 @@ import { useState } from "react";
                         filter.placeholder ||
                         `Search ${filter.label.toLowerCase()}...`
                       }
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm transition-all hover:border-gray-400"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-greenDarkest focus:border-transparent bg-white shadow-sm transition-all hover:border-gray-400"
                     />
                   </div>
                 );
@@ -94,7 +94,7 @@ import { useState } from "react";
                     <select
                       value={value}
                       onChange={(e) => handleChange(filter.key, e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm transition-all hover:border-gray-400 appearance-none cursor-pointer"
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-greenDarkest focus:border-transparent bg-white shadow-sm transition-all hover:border-gray-400 appearance-none cursor-pointer"
                       style={{
                         backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E")`,
                         backgroundPosition: "right 0.5rem center",
@@ -130,7 +130,7 @@ import { useState } from "react";
                             start: e.target.value,
                           })
                         }
-                        className="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm transition-all hover:border-gray-400 text-sm"
+                        className="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-greenDarkest focus:border-transparent bg-white shadow-sm transition-all hover:border-gray-400 text-sm"
                       />
                       <input
                         type="date"
@@ -138,7 +138,7 @@ import { useState } from "react";
                         onChange={(e) =>
                           handleChange(filter.key, { ...value, end: e.target.value })
                         }
-                        className="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white shadow-sm transition-all hover:border-gray-400 text-sm"
+                        className="flex-1 px-3 py-2.5 border border-gray-300 rounded-xl focus:outline-none focus:ring-2 focus:ring-greenDarkest focus:border-transparent bg-white shadow-sm transition-all hover:border-gray-400 text-sm"
                       />
                     </div>
                   </div>
