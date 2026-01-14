@@ -16,7 +16,7 @@ import Modal from "@/components/common/Modal";
 import Table from "@/components/common/Table";
 import FormInput from "@/components/forms/Formnput";
 
-const columns = ["Name", "Username", "District", "Tehsil", "Phone", "Status"];
+const columns = ["Name", "Username", "District",  "Phone", "Status"];
 
 const DcEmployee = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -28,7 +28,6 @@ const DcEmployee = () => {
     username: "",
     role: "", // will be prefilled with MC role
     zilaId: "",
-    tehsilId: "",
     password: "",
     phone: "",
   });
@@ -44,8 +43,8 @@ const DcEmployee = () => {
   const { data: districtsData } = useGetQuery({ path: "zila/all" });
   const districts = districtsData?.data || [];
 
-  const { data: tehsilsData } = useGetQuery({ path: "tehsil/all" });
-  const tehsils = tehsilsData?.tehsils || [];
+  // const { data: tehsilsData } = useGetQuery({ path: "tehsil/all" });
+  // const tehsils = tehsilsData?.tehsils || [];
 
 const {
   data: mcsData,
@@ -75,15 +74,15 @@ const {
     })), 
   [districts]);
 
-  const tehsilOptions = useMemo(() => {
-    if (!formData.zilaId) return [];
-    return tehsils
-      .filter(t => t.zilaId?._id === formData.zilaId)
-      .map(t => ({
-        value: t._id,
-        label: t.name
-      }));
-  }, [tehsils, formData.zilaId]);
+  // const tehsilOptions = useMemo(() => {
+  //   if (!formData.zilaId) return [];
+  //   return tehsils
+  //     .filter(t => t.zilaId?._id === formData.zilaId)
+  //     .map(t => ({
+  //       value: t._id,
+  //       label: t.name
+  //     }));
+  // }, [tehsils, formData.zilaId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -104,9 +103,9 @@ const {
     setFormData({
       name: "",
       username: "",
-      role: "", // You may pre-select MC role here if you know the ID
+      role: "", 
       zilaId: "",
-      tehsilId: "",
+      // tehsilId: "",
       password: "",
       phone: "",
     });
@@ -129,7 +128,7 @@ const {
       username: original.username || "",
       role: original.roleId || original.role?.id || "",
       zilaId: original.zilaId?._id || original.zilaId || "",
-      tehsilId: original.tehsilId?._id || "",
+      // tehsilId: original.tehsilId?._id || "",
       password: "",
       phone: original.phone || "",
     });
@@ -159,7 +158,7 @@ const {
       username: formData.username.trim(),
       roleId: formData.role,
       zilaId: formData.zilaId || undefined,
-      tehsilId: formData.tehsilId || undefined,
+      // tehsilId: formData.tehsilId || undefined,
       phone: formData.phone.trim(),
       ...(formData.password.trim() && { password: formData.password.trim() }),
     };
@@ -210,7 +209,7 @@ const {
       Name: mc.name || "—",
       Username: mc.username || "—",
       District: mc.zilaId?.name || "—",
-      Tehsil: mc.tehsilId?.name || "—",
+      // Tehsil: mc.tehsilId?.name || "—",
       Phone: mc.phone || "—",
       Status: mc.isActive !== false ? "Active" : "Inactive",
     }));
@@ -270,7 +269,7 @@ const {
               options={districtOptions}
               placeholder="Select District"
             />
-
+{/* 
             <FormInput
               label="Tehsil"
               type="select"
@@ -280,7 +279,7 @@ const {
               options={tehsilOptions}
               placeholder={formData.zilaId ? "Select Tehsil" : "Select District first"}
               disabled={!formData.zilaId}
-            />
+            /> */}
 
             <FormInput
               label={isEditMode ? "New Password (optional)" : "Password"}

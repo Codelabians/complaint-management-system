@@ -12,14 +12,16 @@ import {
   usePatchMutation,
   useDeleteMutation,
   usePutMutation,
+  usePostMutation,
 } from "@/services/apiService";
 import { MessageSquareWarning } from "lucide-react";
 import { useMemo, useState } from "react";
 import { toast } from "react-toastify";
-import { useNavigate } from "react-router-dom"; // Add this import
+import { useNavigate } from "react-router-dom"; 
+import AssignComplaint from "./ComplaintAssign";
 
 const ComplaintList = () => {
-  const navigate = useNavigate(); // Add this hook
+  const navigate = useNavigate(); 
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
   const [selectedComplaint, setSelectedComplaint] = useState(null);
@@ -40,6 +42,7 @@ const ComplaintList = () => {
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [complaintToDelete, setComplaintToDelete] = useState(null);
+  const [showAssignModal, setShowAssignModal] = useState(false);
 
 
   const queryParams = useMemo(() => {
@@ -54,6 +57,10 @@ const ComplaintList = () => {
     return params.toString();
   }, [filterValues, page, perPage]);
 
+  const {data : employees} = useGetQuery({
+    path : "/dc/users/by-role?roleName=MC_EMPLOYEE"
+  })
+
   const {
     data: complaintsData,
     isLoading: complaintsLoading,
@@ -62,13 +69,15 @@ const ComplaintList = () => {
     path: `/complaints/my-area${queryParams ? `?${queryParams}` : ""}`,
   });
 
+
   const { data: categoriesData } = useGetQuery({ path: "/complains/get" });
   const categories = categoriesData?.data || [];
 
   const [updateComplaint, { isLoading: isUpdating }] = usePutMutation();
   const [deleteComplaint, { isLoading: isDeleting }] = useDeleteMutation();
+  const [assignTask, { isLoading: isAssigning }] = usePostMutation();
 
-  const complaints = complaintsData?.data || [];
+  const complaints = complaintsData?.complaints || [];
 
   const statusOptions = useMemo(
     () => [
@@ -85,7 +94,6 @@ const ComplaintList = () => {
     []
   );
 
-  // Add view handler
   const handleView = (row) => {
     navigate(`/portal/complaints/${row._id}`);
   };
@@ -167,6 +175,35 @@ const ComplaintList = () => {
     } finally {
       setShowDeleteConfirm(false);
       setComplaintToDelete(null);
+    }
+  };
+
+  const handleAssignClick = (complaint) => {
+  setSelectedComplaint(complaint);
+  setShowAssignModal(true);
+};
+
+const handleAssign = async (complaintId, employeeId) => {
+    try {
+      await assignTask({
+        path: "mc-coo/assign-task",
+        body: {
+          complaintId: complaintId,
+          employeeUserId: employeeId,
+        }
+      }).unwrap();
+
+      toast.success("Complaint assigned successfully!");
+      setShowAssignModal(false);
+      refetch(); 
+
+    } catch (error) {
+      console.error("Assignment error:", error);
+      toast.error(
+        error?.data?.message ||
+        error?.data?.error ||
+        "Failed to assign complaint. Please try again."
+      );
     }
   };
 
@@ -269,16 +306,26 @@ const ComplaintList = () => {
           actions={{
             edit: true,
             view: true,
-            // delete: true,
+            assign: true
           }}
-          onView={handleView} // Add this
+          onView={handleView} 
           onEdit={handleEdit}
           onDelete={handleDelete}
           setPage={setPage}
           setPerPage={setPerPage}
           paginationMeta={complaintsData?.pagination}
+  onAssign={handleAssignClick}
         />
       )}
+
+      <AssignComplaint
+  isOpen={showAssignModal}
+  onClose={() => setShowAssignModal(false)}
+  complaint={selectedComplaint}
+  employees={employees}
+  onAssign={handleAssign}
+  // loading={isAssigning}
+/>
 
       <Modal
         isOpen={isModalOpen}

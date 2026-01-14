@@ -1,48 +1,67 @@
-import { ChevronLeft, ChevronRight, Edit, Eye, Trash } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  Edit,
+  Eye,
+  Trash,
+  UserPlus,
+} from "lucide-react";
 import { useState } from "react";
 import ImageModal from "../ImgModal";
 import { useSelector } from "react-redux";
 
 const Table = ({
-  data = [],                   
+  data = [],
   columns = [],
   actions = {},
   onEdit,
   onDelete,
   onView,
-  setPage,                      
-  setPerPage,                   
-  paginationMeta = null,       
-  itemsPerPage = 10,            
+  onAssign = false,
+  setPage,
+  setPerPage,
+  paginationMeta = null,
+  itemsPerPage = 10,
 }) => {
-  const [imageModal, setImageModal] = useState({ isOpen: false, url: '' });
+  const [imageModal, setImageModal] = useState({ isOpen: false, url: "" });
 
   const user = useSelector((state) => state.auth.user);
-  const role = user?.role || '';
+  const role = user?.role || "";
+
+  // Role-based permissions
+  const isDC = role === "DC";
+
+  const canView = actions.view && onView;
+  const canEdit = isDC && actions.edit && onEdit;
+  const canDelete = isDC && actions.delete && onDelete;
+  const canAssign = actions.assign && onAssign && role === "MC_CO";
+
+  const hasAnyAction = canView || canEdit || canDelete || canAssign;
 
   const isServerSide = !!paginationMeta;
 
-  const currentPage = isServerSide 
-    ? paginationMeta.currentPage || paginationMeta.current_page || 1
-    : 1;  
 
-  const totalPages = isServerSide 
+  const currentPage = isServerSide
+    ? paginationMeta.currentPage || paginationMeta.current_page || 1
+    : 1;
+
+  const totalPages = isServerSide
     ? paginationMeta.totalPages || paginationMeta.total_pages || 1
     : Math.ceil(data.length / itemsPerPage);
 
-  const totalItems = isServerSide 
+  const totalItems = isServerSide
     ? paginationMeta.totalItems || paginationMeta.total || 0
     : data.length;
 
-  const perPage = isServerSide 
+  const perPage = isServerSide
     ? paginationMeta.itemsPerPage || paginationMeta.per_page || itemsPerPage
     : itemsPerPage;
 
-  const from = isServerSide 
-    ? paginationMeta.from || ((currentPage - 1) * perPage + 1)
-    : ((currentPage - 1) * perPage + 1);
+  const from = isServerSide
+    ? paginationMeta.from || (currentPage - 1) * perPage + 1
+    : (currentPage - 1) * perPage + 1;
 
-  const to = isServerSide 
+  const to = isServerSide
     ? paginationMeta.to || Math.min(from + data.length - 1, totalItems)
     : Math.min(from + data.length - 1, totalItems);
 
@@ -59,13 +78,13 @@ const Table = ({
   };
 
   const isImageUrl = (value) => {
-    if (typeof value !== 'string') return false;
-    return /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(value) ||
-           value.startsWith('data:image/') ||
-           (value.startsWith('http') && value.includes('image'));
+    if (typeof value !== "string") return false;
+    return (
+      /\.(jpg|jpeg|png|gif|bmp|webp|svg)$/i.test(value) ||
+      value.startsWith("data:image/") ||
+      (value.startsWith("http") && value.includes("image"))
+    );
   };
-
-  const showActions = actions.view || actions.edit || actions.delete;
 
   const renderCellContent = (value, rowIndex, columnKey) => {
     if (isImageUrl(value)) {
@@ -78,7 +97,7 @@ const Table = ({
         />
       );
     }
-    return value ?? '—';
+    return value ?? "—";
   };
 
   return (
@@ -94,8 +113,8 @@ const Table = ({
                   {col}
                 </th>
               ))}
-              {role === "DC" && showActions && (
-                <th className="py-3 px-6 text-left w-40">Actions</th>
+              {hasAnyAction && (
+                <th className="py-3 px-6 text-left w-48">Actions</th>
               )}
             </tr>
           </thead>
@@ -103,7 +122,10 @@ const Table = ({
           <tbody className="divide-y divide-greenPrimary/20">
             {data.length > 0 ? (
               data.map((row, rowIndex) => (
-                <tr key={rowIndex} className="hover:bg-greenLight/10 transition-colors">
+                <tr
+                  key={rowIndex}
+                  className="hover:bg-greenLight/10 transition-colors"
+                >
                   <td className="py-2 px-6 text-greenDark">
                     {from + rowIndex}
                   </td>
@@ -114,22 +136,46 @@ const Table = ({
                     </td>
                   ))}
 
-                  { role === "DC" && showActions && (
+                  {hasAnyAction && (
                     <td className="py-2 px-6">
-                      <div className="flex items-center gap-2">
-                        {actions.view && (
-                          <button onClick={() => onView?.(row)} title="View">
-                            <Eye size={16} className="text-greenPrimary" />
+                      <div className="flex items-center gap-3">
+                        {canView && (
+                          <button
+                            onClick={() => onView(row)}
+                            title="View"
+                            className="text-green-600 hover:text-green-800 transition-colors"
+                          >
+                            <Eye size={18} />
                           </button>
                         )}
-                        {actions.edit && onEdit && (
-                          <button onClick={() => onEdit(row)} title="Edit">
-                            <Edit size={16} className="text-greenDarkest" />
+
+                        {canEdit && (
+                          <button
+                            onClick={() => onEdit(row)}
+                            title="Edit"
+                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                          >
+                            <Edit size={18} />
                           </button>
                         )}
-                        {actions.delete && onDelete && (
-                          <button onClick={() => onDelete(row)} title="Delete">
-                            <Trash size={16} className="text-red-600" />
+
+                        {canDelete && (
+                          <button
+                            onClick={() => onDelete(row)}
+                            title="Delete"
+                            className="text-red-600 hover:text-red-800 transition-colors"
+                          >
+                            <Trash size={18} />
+                          </button>
+                        )}
+
+                        {canAssign || onAssign && (
+                          <button
+                            onClick={() => onAssign(row)}
+                            title="Assign"
+                            className="text-purple-600 hover:text-purple-800 transition-colors"
+                          >
+                            <UserPlus size={18} />
                           </button>
                         )}
                       </div>
@@ -139,7 +185,10 @@ const Table = ({
               ))
             ) : (
               <tr>
-                <td colSpan={columns.length + (showActions ? 2 : 1)} className="py-12 text-center text-greenLight/70 italic">
+                <td
+                  colSpan={columns.length + (hasAnyAction ? 1 : 0)}
+                  className="py-12 text-center text-greenLight/70 italic"
+                >
                   No data available
                 </td>
               </tr>
@@ -152,34 +201,33 @@ const Table = ({
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-6 py-4 mt-6 bg-greenDarkest rounded-lg shadow">
           <div className="text-white">
-            Showing <span className="font-medium">{from}</span> to{' '}
-            <span className="font-medium">{to}</span> of{' '}
-            <span className="font-medium">{totalItems}</span> complaints
+            Showing <span className="font-medium">{from}</span> to{" "}
+            <span className="font-medium">{to}</span> of{" "}
+            <span className="font-medium">{totalItems}</span> items
           </div>
 
           <div className="flex items-center gap-2">
             <button
               onClick={() => handlePageChange(currentPage - 1)}
               disabled={currentPage === 1}
-              className="p-2 rounded-lg bg-greenPrimary hover:bg-greenPrimary text-white disabled:opacity-40"
+              className="p-2 rounded-lg bg-greenPrimary hover:bg-greenPrimary/90 text-white disabled:opacity-40 transition-colors"
             >
               <ChevronLeft size={20} />
             </button>
 
             {Array.from({ length: totalPages }, (_, i) => i + 1)
-              .filter(p => 
-                p === 1 || 
-                p === totalPages || 
-                Math.abs(p - currentPage) <= 2
+              .filter(
+                (p) =>
+                  p === 1 || p === totalPages || Math.abs(p - currentPage) <= 2
               )
-              .map(page => (
+              .map((page) => (
                 <button
                   key={page}
                   onClick={() => handlePageChange(page)}
-                  className={`px-4 py-2 rounded-lg font-medium ${
+                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
                     currentPage === page
-                      ? 'bg-greenPrimary text-white'
-                      : 'bg-greenDark hover:bg-greenPrimary text-white'
+                      ? "bg-greenPrimary text-white"
+                      : "bg-greenDark hover:bg-greenPrimary/80 text-white"
                   }`}
                 >
                   {page}
@@ -189,7 +237,7 @@ const Table = ({
             <button
               onClick={() => handlePageChange(currentPage + 1)}
               disabled={currentPage === totalPages}
-              className="p-2 rounded-lg bg-greenPrimary/20 hover:bg-greenPrimary/40 text-white disabled:opacity-40"
+              className="p-2 rounded-lg bg-greenPrimary hover:bg-greenPrimary/90 text-white disabled:opacity-40 transition-colors"
             >
               <ChevronRight size={20} />
             </button>
@@ -200,7 +248,7 @@ const Table = ({
       <ImageModal
         isOpen={imageModal.isOpen}
         imageUrl={imageModal.url}
-        onClose={() => setImageModal({ isOpen: false, url: '' })}
+        onClose={() => setImageModal({ isOpen: false, url: "" })}
       />
     </div>
   );

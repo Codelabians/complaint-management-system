@@ -26,6 +26,8 @@ const Sidebar = () => {
   const user = useSelector((state) => state.auth.user);
   const role = user?.role
 
+  const isMcCo = ["mc_co", "MC_CO"].includes(role);
+  
 const menuItems = [
   {
     id: 'dashboard',
@@ -57,16 +59,21 @@ const menuItems = [
         }
       ]
     : []),
-...(role !== "mc_co" ? [{
-  id: 'mc',
-  label: 'MC Management',
-  icon: Home,
-  submenu: [
-    { id: 'mc-list', label: 'All Municipal Committees', route: '/portal/mcs' },
-    { id: 'co-list', label: 'CO', route: '/portal/cos' },
-    { id: 'mc-employee-list', label: 'MC Employee', route: '/portal/mc-employee' },
-  ]
-}] : []),
+{
+    id: 'mc',
+    label: 'MC Management',
+    icon: Home,
+    submenu: [
+      // MC + CO visible only for non-mc_co
+      ...(!isMcCo ? [
+        { id: 'mc-list', label: 'All Municipal Committees', route: '/portal/mcs' },
+        { id: 'co-list', label: 'CO', route: '/portal/cos' },
+      ] : []),
+
+      // MC Employee visible to everyone
+      { id: 'mc-employee-list', label: 'MC Employee', route: '/portal/mc-employee' },
+    ].filter(Boolean) // removes empty arrays
+  },
 
   {
     id: 'users',
@@ -74,7 +81,11 @@ const menuItems = [
     icon: Users,
     submenu: [
       { id: 'user-create', label: 'Create User', route: '/portal/users/create' },
-      { id: 'roles', label: 'Roles', route: '/portal/roles' }
+      ...(role === "dc" ? [{
+        id: 'roles',
+        label: 'Roles',
+        route: '/portal/roles'
+      }] : []),
     ]
   },
 
