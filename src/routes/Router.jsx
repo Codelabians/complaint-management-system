@@ -27,6 +27,7 @@ import COList from '@/pages/users/COList';
 import DCOList from '@/pages/users/DCOList';
 import DcEmployee from '@/pages/dc/DcEmployee';
 import McEmployee from '@/pages/mc/McEmployee';
+import MCDashboard from '@/pages/Mc-Dashboard';
 
 // Route Protection Components
 
@@ -79,12 +80,17 @@ const router = createBrowserRouter([
         children: [
           {
             index: true,              // /portal → shows Dashboard
-            element: <Dashboard />,
+            element: <MCDashboard/>,
           },
           {
-            path: 'dashboard',
-            element: <Dashboard />,
+            path: 'mc-dashboard',
+            element: <Mc-Dashboard />,
           },
+          //  {
+          //   index: true,              // /portal → shows Dashboard
+          //   element: <Dashboard/>,
+          // },
+        
           {
             path: '/portal/tehsils',
             element: <TehsilList />,

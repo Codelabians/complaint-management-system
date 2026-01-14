@@ -14,11 +14,17 @@ import { useDispatch } from 'react-redux';
 
 
 const menuItems = [
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
+  // {
+  //   id: 'dashboard',
+  //   label: 'Dashboard',
+  //   icon: LayoutDashboard,
+  //   route: '/portal'
+  // },
+   {
+    id: 'mc-dashboard',
+    label: 'MC Dashboard',
     icon: LayoutDashboard,
-    route: '/portal'
+  route: '/portal'
   },
   {
     id: 'dc',
@@ -30,6 +36,7 @@ const menuItems = [
       { id: 'dc-employee-list', label: 'Employee', route: '/portal/dc-employee' },
     ]
   },
+
     {
     id: 'tehsil',
     label: 'Tehsil Management',

@@ -24,7 +24,7 @@ const Login = () => {
 
     try {
       const response = await loginUser({
-        path: "admin/login", // or url: "/auth/login" – depends on your apiService setup
+        path: "admin/login",
         body: payload,
       }).unwrap();
 
