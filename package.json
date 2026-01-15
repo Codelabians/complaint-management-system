@@ -47,6 +47,7 @@
     "react-toastify": "^10.0.6",
     "react-tooltip": "^5.28.0",
     "redux-persist": "^6.0.0",
+    "socket.io-client": "^4.8.3",
     "swiper": "^11.2.8",
     "yet-another-react-lightbox": "^3.23.2",
     "yup": "^1.4.0"
