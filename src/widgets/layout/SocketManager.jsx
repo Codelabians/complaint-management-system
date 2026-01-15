@@ -15,9 +15,12 @@ export default function SocketManager() {
   const user = useSelector(selectCurrentUser);
   const token = useSelector(selectCurrentToken);
 
-  const { data: apiData, isSuccess } = useGetQuery("/notifications", {
-    skip: !user?.id,
-  });
+  const { data: apiData, isSuccess } = useGetQuery(
+    { path: "/notifications" },
+    {
+      skip: !user?.id,
+    },
+  );
   console.log(apiData, "from the socket manager");
 
   useEffect(() => {
