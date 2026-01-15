@@ -1,6 +1,10 @@
 import React, { useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { useGetQuery, usePostMutation } from "@/services/apiService";
+import {
+  useGetQuery,
+  usePatchMutation,
+  usePostMutation,
+} from "@/services/apiService";
 import {
   ArrowLeft,
   MapPin,
@@ -20,6 +24,7 @@ import {
 import Loader from "@/components/common/Loader";
 import ConfirmDialog from "@/components/common/ConfirmDialog";
 import Modal from "@/components/common/Modal";
+import { useSelector } from "react-redux";
 
 const ComplaintDetailView = () => {
   const { id } = useParams();
@@ -30,12 +35,12 @@ const ComplaintDetailView = () => {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectRemark, setRejectRemark] = useState("");
 
-  const { data: response, isLoading } = useGetQuery({
+  const { data: response, isLoading , refetch} = useGetQuery({
     path: `/complaints/${id}`,
   });
 
-  const [approveComplaint, { isLoading: isApproving }] = usePostMutation();
-  const [rejectComplaint, { isLoading: isRejecting }] = usePostMutation();
+  const [approveComplaint, { isLoading: isApproving }] = usePatchMutation();
+  const [rejectComplaint, { isLoading: isRejecting }] = usePatchMutation();
 
   const complaint = response?.complaint;
 
@@ -84,11 +89,50 @@ const ComplaintDetailView = () => {
     setShowRejectModal(true);
   };
 
+  const user = useSelector((state) => state.auth.user);
+  const role = user?.role;
+  console.log(role);
+
+  // Helper function to get correct base path + endpoints
+  const getComplaintEndpoints = (role) => {
+    switch (role) {
+      case "DC":
+        return {
+          approve: `/dc/complaints/${id}/approve`,
+          reject: `/dc/complaints/${id}/reject`,
+        };
+
+      case "AC":
+        return {
+          approve: `/ac/complaints/${id}/approve`,
+          reject: `/ac/complaints/${id}/reject`,
+        };
+
+      case "MC_CO":
+      case "mc-coo": // accepting both common variations
+        return {
+          approve: `complaints/${id}/mc/approve`,
+          reject: `complaints/${id}/mc/reject`,
+        };
+
+      default:
+        // fallback or throw error - choose what makes sense for your app
+        return {
+          approve: `/complaints/${id}/approve`, // generic fallback
+          reject: `/complaints/${id}/reject`,
+        };
+    }
+  };
+
+  const { approve: approvePath, reject: rejectPath } =
+    getComplaintEndpoints(role);
+
   const confirmApprove = async () => {
     try {
       await approveComplaint({
-        path: `/dc/complaints/${id}/approve`,
+        path: approvePath,
       }).unwrap();
+
       toast.success("Complaint approved successfully!");
       setShowApproveDialog(false);
       refetch();
@@ -106,9 +150,10 @@ const ComplaintDetailView = () => {
 
     try {
       await rejectComplaint({
-        path: `/dc/complaints/${id}/reject`,
+        path: rejectPath,
         body: { remark: rejectRemark.trim() },
       }).unwrap();
+
       toast.success("Complaint rejected successfully!");
       setShowRejectModal(false);
       setRejectRemark("");
@@ -165,58 +210,76 @@ const ComplaintDetailView = () => {
               </h1>
             </div>
 
-            <div className="flex  items-center gap-5">
-          <div className="flex items-center gap-4">
-  {complaint.status === "resolved" || complaint.status === "resolveByEmployee" &&(
-    <button
-      onClick={handleApprove}
-      disabled={isApproving || isRejected}
-      className="flex items-center gap-2 px-6 py-3 bg-greenDarkest text-white rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            <div className="flex items-center gap-5">
+  {/* Status badge */}
+  <div className="text-right">
+    <span
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${
+        isRejected
+          ? "bg-red-100 text-red-700"
+          : complaint.status.toLowerCase() === "resolved" ||
+              complaint.status.toLowerCase() === "completed" ||
+              complaint.status.toLowerCase() === "closed"
+            ? "bg-green-100 text-green-700"
+            : complaint.status.toLowerCase() === "progress"
+              ? "bg-blue-100 text-blue-700"
+              : complaint.status.toLowerCase() === "delayed"
+                ? "bg-orange-100 text-orange-700"
+                : "bg-yellow-100 text-yellow-700"
+      }`}
     >
-      <CheckCircle size={20} />
-      {isApproving ? "Approving..." : "Approve"}
-    </button>
-  )}
+      {isRejected ? (
+        <XCircle className="w-4 h-4" />
+      ) : complaint.status.toLowerCase() === "resolved" ? (
+        <CheckCircle className="w-4 h-4" />
+      ) : (
+        <Clock className="w-4 h-4" />
+      )}
+      {complaint.status.charAt(0).toUpperCase() + complaint.status.slice(1)}
+    </span>
+  </div>
 
-  {complaint.status === "resolved" || complaint.status === "resolveByEmployee" && (
-    <button
-      onClick={handleReject}
-      disabled={isRejecting || isRejected}
-      className="flex items-center gap-2 px-6 py-3 bg-red text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
-    >
-      <XCircle size={20} />
-      {isRejecting ? "Rejecting..." : "Reject"}
-    </button>
-  )}
+  {/* Approve & Reject Buttons - Role + Status based visibility */}
+  {(() => {
+    const status = complaint.status?.toLowerCase();
+    const isButtonLoading = isApproving || isRejecting;
+    const isAlreadyRejected = isRejected;
+
+    let shouldShowButtons = false;
+
+    if (role === "mc-coo" || role === "MC_CO") {
+      shouldShowButtons = status === "resolvebyemployee";
+    } else if (role === "AC") {
+      shouldShowButtons = status === "resolved";
+    } else if (role === "DC") {
+      shouldShowButtons = status === "completed";
+    }
+
+    if (!shouldShowButtons || isAlreadyRejected) return null;
+
+    return (
+      <div className="flex items-center gap-4">
+        <button
+          onClick={handleApprove}
+          disabled={isButtonLoading}
+          className="flex items-center gap-2 px-6 py-3 bg-greenDarkest text-white rounded-lg hover:bg-green-800 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed min-w-[140px]"
+        >
+          <CheckCircle size={20} />
+          {isApproving ? "Approving..." : "Approve"}
+        </button>
+
+        <button
+          onClick={handleReject}
+          disabled={isButtonLoading}
+          className="flex items-center gap-2 px-6 py-3 bg-red text-white rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed min-w-[140px]"
+        >
+          <XCircle size={20} />
+          {isRejecting ? "Rejecting..." : "Reject"}
+        </button>
+      </div>
+    );
+  })()}
 </div>
-              <div className="text-right">
-                <span
-                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-semibold ${
-                    isRejected
-                      ? "bg-red-100 text-red-700"
-                      : complaint.status.toLowerCase() === "resolved" ||
-                          complaint.status.toLowerCase() === "completed" ||
-                          complaint.status.toLowerCase() === "closed"
-                        ? "bg-green-100 text-green-700"
-                        : complaint.status.toLowerCase() === "progress"
-                          ? "bg-blue-100 text-blue-700"
-                          : complaint.status.toLowerCase() === "delayed"
-                            ? "bg-orange-100 text-orange-700"
-                            : "bg-yellow-100 text-yellow-700"
-                  }`}
-                >
-                  {isRejected ? (
-                    <XCircle className="w-4 h-4" />
-                  ) : complaint.status.toLowerCase() === "resolved" ? (
-                    <CheckCircle className="w-4 h-4" />
-                  ) : (
-                    <Clock className="w-4 h-4" />
-                  )}
-                  {complaint.status.charAt(0).toUpperCase() +
-                    complaint.status.slice(1)}
-                </span>
-              </div>
-            </div>
           </div>
         </div>
       </div>

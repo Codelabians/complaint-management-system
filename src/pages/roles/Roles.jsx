@@ -140,7 +140,7 @@ const Roles = () => {
         title="Roles"
         icon={ShieldCheck}
         count={roles.length}
-        actionButton={<AddButton text="Create Role" onClick={handleCreate} />}
+        // actionButton={<AddButton text="Create Role" onClick={handleCreate} />}
       />
 
       {rolesLoading ? (
