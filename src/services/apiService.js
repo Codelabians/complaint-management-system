@@ -1,6 +1,6 @@
 import { createApi, fetchBaseQuery } from "@reduxjs/toolkit/query/react";
 
-const REACT_APP_API_URL = "https://complaint-system-backend.vercel.app/api/"
+const REACT_APP_API_URL = "https://complaint-system-backend.vercel.app/api/";
 // const REACT_APP_API_URL = "http://192.168.1.16:3000/api"
 const API_URL = REACT_APP_API_URL;
 
@@ -36,7 +36,7 @@ const baseQuery = fetchBaseQuery({
 //   if (contentType?.includes("application/json")) {
 //     return result;
 //   } else if (
-//     contentType?.includes("application/octet-stream") || 
+//     contentType?.includes("application/octet-stream") ||
 //     contentType?.includes("application/pdf")
 //   ) {
 //      Handle file download for PDF or other binary data
